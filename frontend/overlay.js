@@ -107,17 +107,38 @@ export function createInfoCard(item, x, y, visible) {
   card.id = 'info-card';
   card.className = 'info-card' + (item.priority === 'high' ? ' info-card--high-priority' : '');
 
-  // Category tag
-  const categoryTag = item.category ? `<span class="info-card__category">[${item.category}]</span> ` : '';
+  // Build card DOM safely (no innerHTML — data comes from API and may be untrusted)
+  const titleDiv = document.createElement('div');
+  titleDiv.className = 'info-card__title';
+  if (item.category) {
+    const catSpan = document.createElement('span');
+    catSpan.className = 'info-card__category';
+    catSpan.textContent = `[${item.category}] `;
+    titleDiv.appendChild(catSpan);
+  }
+  titleDiv.appendChild(document.createTextNode(item.title || ''));
+  card.appendChild(titleDiv);
 
-  card.innerHTML = `
-    <div class="info-card__title">${categoryTag}${item.title}</div>
-    ${item.summary ? `<div class="info-card__summary">${item.summary}</div>` : ''}
-    <div class="info-card__meta">
-      ${item.source ? `<span class="info-card__source">[${item.source}]</span>` : ''}
-      <span class="info-card__time">${formatTime(item.timestamp)}</span>
-    </div>
-  `;
+  if (item.summary) {
+    const summaryDiv = document.createElement('div');
+    summaryDiv.className = 'info-card__summary';
+    summaryDiv.textContent = item.summary;
+    card.appendChild(summaryDiv);
+  }
+
+  const metaDiv = document.createElement('div');
+  metaDiv.className = 'info-card__meta';
+  if (item.source) {
+    const srcSpan = document.createElement('span');
+    srcSpan.className = 'info-card__source';
+    srcSpan.textContent = `[${item.source}]`;
+    metaDiv.appendChild(srcSpan);
+  }
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'info-card__time';
+  timeSpan.textContent = formatTime(item.timestamp);
+  metaDiv.appendChild(timeSpan);
+  card.appendChild(metaDiv);
 
   card.style.left = `${x}px`;
   card.style.top = `${y}px`;

@@ -20,7 +20,7 @@ import gsap from 'gsap';
 import { createEarthScene } from './earth.js';
 import { createCameraController, LEVEL_CONFIG } from './camera.js';
 import { createMarkersManager } from './markers.js';
-import { startPolling, stopPolling, getItems, seedData, fetchNews, nextLevel } from './data.js';
+import { startPolling, getItems, seedData, fetchNews, nextLevel } from './data.js';
 import {
   updateHUD, updateClock, setupLevelSwitcher, setActiveLevelButton,
   fadeOutHUD, fadeInHUD,
@@ -83,8 +83,12 @@ const markers = createMarkersManager(scene);
 let animTime = 0;
 let lastTime = performance.now();
 let sunUpdateTimer = 0;
+let clockUpdateTimer = 0;
 let currentInfoItem = null;  // The item being displayed (for camera follow)
-let presenting = false;      // Whether we're in a presentation cycle
+
+// Generation counter: incremented on every interruption (manual level switch).
+// The presentation loop checks this after every await to bail out if stale.
+let generation = 0;
 
 // Presentation state
 const presentationState = {
@@ -93,7 +97,6 @@ const presentationState = {
   phase: 'idle',  // idle | presenting | breathing | switching
   card: null,
   marker: null,
-  noDataTimer: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -114,102 +117,137 @@ window.addEventListener('resize', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Info presentation cycle
+// Cancellable wait — resolves with false if generation changed
 // ---------------------------------------------------------------------------
+function wait(ms, gen) {
+  return new Promise(resolve => {
+    setTimeout(() => resolve(generation === gen), ms);
+  });
+}
+
+/**
+ * Await a GSAP timeline as a promise, but bail out if generation changes.
+ * Returns false if cancelled, true if completed normally.
+ */
+function awaitTimeline(tl, gen) {
+  return new Promise(resolve => {
+    if (generation !== gen) { resolve(false); return; }
+    tl.then(() => resolve(generation === gen));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Info presentation cycle — iterative (no recursion)
+// ---------------------------------------------------------------------------
+async function presentationLoop() {
+  const gen = generation;
+
+  while (generation === gen) {
+    const { currentLevel } = presentationState;
+    const items = getItems(currentLevel);
+
+    if (presentationState.itemIndex >= items.length) {
+      // All items shown for this level (or no items)
+      if (items.length === 0) {
+        presentationState.phase = 'idle';
+        if (!await wait(10000, gen)) break;
+      }
+
+      // Switch to next level
+      const next = nextLevel(currentLevel);
+      presentationState.phase = 'switching';
+
+      // Fade out HUD
+      if (!await awaitTimeline(fadeOutHUD(), gen)) break;
+
+      // Camera transition
+      const transitionDone = await new Promise(resolve => {
+        const tween = cameraCtrl.transitionTo(next, null, () => resolve(true));
+        if (!tween) resolve(true); // Already at target or same level
+      });
+      if (generation !== gen) break;
+
+      // Update HUD for new level
+      updateHUD(next, LEVEL_CONFIG[next]);
+      setActiveLevelButton(next);
+      if (!await awaitTimeline(fadeInHUD(), gen)) break;
+
+      // Reset for new level
+      presentationState.currentLevel = next;
+      presentationState.itemIndex = 0;
+
+      // Fetch fresh data
+      await fetchNews();
+      if (generation !== gen) break;
+
+      continue; // Restart loop with new level
+    }
+
+    const item = items[presentationState.itemIndex];
+    presentationState.phase = 'presenting';
+    currentInfoItem = item;
+
+    // Create marker
+    const marker = markers.createMarker(item);
+    presentationState.marker = marker;
+
+    // Phase 1+2: Anchor + line animate in
+    if (!await awaitTimeline(marker.animateIn(), gen)) break;
+
+    // Phase 3: Create and show card
+    const screenPos = marker.getScreenPosition(camera, overlay);
+    const card = createInfoCard(item, screenPos.x, screenPos.y, screenPos.visible);
+    presentationState.card = card;
+    if (!await awaitTimeline(animateCardIn(card), gen)) break;
+
+    // Phase 4: Hold (reading time)
+    const readDuration = computeReadDuration(item);
+    if (!await wait(readDuration * 1000, gen)) break;
+
+    // Phase 5: Card out + marker out
+    if (!await awaitTimeline(animateCardOut(card), gen)) break;
+    if (!await awaitTimeline(marker.animateOut(), gen)) break;
+
+    removeInfoCard();
+    presentationState.card = null;
+    currentInfoItem = null;
+
+    // Phase 6: Breathing pause
+    presentationState.phase = 'breathing';
+    if (!await wait(1500, gen)) break;
+
+    // Next item
+    presentationState.itemIndex++;
+  }
+}
 
 function startPresentationCycle() {
-  presenting = true;
   presentationState.phase = 'idle';
   presentationState.itemIndex = 0;
   presentationState.currentLevel = cameraCtrl.getCurrentLevel();
-  presentNext();
+  presentationLoop();
 }
 
-async function presentNext() {
-  const { currentLevel } = presentationState;
-  const items = getItems(currentLevel);
-
-  if (presentationState.itemIndex >= items.length) {
-    // All items shown for this level (or no items)
-    if (items.length === 0) {
-      // "No data" — earth turns quietly, wait 10s then switch
-      presentationState.phase = 'idle';
-      await wait(10000);
-    }
-
-    // Switch to next level
-    const next = nextLevel(currentLevel);
-    presentationState.phase = 'switching';
-
-    // Fade out HUD
-    await fadeOutHUD();
-
-    // Camera transition
-    await new Promise(resolve => {
-      cameraCtrl.transitionTo(next, null, resolve);
-    });
-
-    // Update HUD for new level
-    updateHUD(next, LEVEL_CONFIG[next]);
-    setActiveLevelButton(next);
-    await fadeInHUD();
-
-    // Reset for new level
-    presentationState.currentLevel = next;
-    presentationState.itemIndex = 0;
-
-    // Fetch fresh data
-    await fetchNews();
-
-    presentNext();
-    return;
+/**
+ * Interrupt the current presentation cycle. All pending awaits will bail out.
+ */
+function interruptPresentation() {
+  generation++;
+  // Kill all running GSAP tweens on known targets
+  gsap.killTweensOf('#hud');
+  if (presentationState.marker) {
+    const m = presentationState.marker;
+    gsap.killTweensOf(m);
+    gsap.killTweensOf(m.anchor?.material);
   }
-
-  const item = items[presentationState.itemIndex];
-  presentationState.phase = 'presenting';
-  currentInfoItem = item;
-
-  // Create marker
-  const marker = markers.createMarker(item);
-  presentationState.marker = marker;
-
-  // Phase 1+2: Anchor + line animate in
-  const inTl = marker.animateIn();
-  await inTl.then ? inTl : new Promise(resolve => inTl.eventCallback('onComplete', resolve));
-
-  // Phase 3: Create and show card
-  const screenPos = marker.getScreenPosition(camera, overlay);
-  const card = createInfoCard(item, screenPos.x, screenPos.y, screenPos.visible);
-  presentationState.card = card;
-  const cardInTl = animateCardIn(card);
-  await cardInTl.then ? cardInTl : new Promise(resolve => cardInTl.eventCallback('onComplete', resolve));
-
-  // Phase 4: Hold (reading time)
-  const readDuration = computeReadDuration(item);
-  await wait(readDuration * 1000);
-
-  // Phase 5: Card out + marker out
-  const cardOutTl = animateCardOut(card);
-  await cardOutTl.then ? cardOutTl : new Promise(resolve => cardOutTl.eventCallback('onComplete', resolve));
-
-  const outTl = marker.animateOut();
-  await outTl.then ? outTl : new Promise(resolve => outTl.eventCallback('onComplete', resolve));
-
+  if (presentationState.card) {
+    gsap.killTweensOf(presentationState.card);
+  }
   removeInfoCard();
+  markers.cleanup();
   presentationState.card = null;
+  presentationState.marker = null;
   currentInfoItem = null;
-
-  // Phase 6: Breathing pause
-  presentationState.phase = 'breathing';
-  await wait(1500);
-
-  // Next item
-  presentationState.itemIndex++;
-  presentNext();
-}
-
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // ---------------------------------------------------------------------------
@@ -221,7 +259,7 @@ function animate(now) {
   const rawDelta = (now - lastTime) / 1000;
   const delta = rawDelta > 0.1 ? 1 / 60 : rawDelta;
   lastTime = now;
-  animTime = (animTime + delta) % 20000;
+  animTime += delta;
 
   // Update sun every 60s
   sunUpdateTimer += delta;
@@ -243,8 +281,12 @@ function animate(now) {
     updateCardPosition(presentationState.card, screenPos.x, screenPos.y, screenPos.visible);
   }
 
-  // Update clock
-  updateClock();
+  // Update clock once per second
+  clockUpdateTimer += delta;
+  if (clockUpdateTimer >= 1.0) {
+    updateClock();
+    clockUpdateTimer = 0;
+  }
 
   // Render
   composer.render();
@@ -258,10 +300,7 @@ setupLevelSwitcher((level) => {
   if (cameraCtrl.isTransitioning()) return;
 
   // Interrupt current presentation
-  gsap.killTweensOf('*');
-  removeInfoCard();
-  markers.cleanup();
-  currentInfoItem = null;
+  interruptPresentation();
 
   // Transition
   fadeOutHUD();
@@ -274,7 +313,7 @@ setupLevelSwitcher((level) => {
     presentationState.currentLevel = level;
     presentationState.itemIndex = 0;
     presentationState.phase = 'idle';
-    presentNext();
+    presentationLoop();
   });
 });
 

@@ -16,21 +16,39 @@ const LINE_LENGTH = 1.8;  // Length of guide line in scene units
 const ANCHOR_SIZE = 0.08;
 
 // ---------------------------------------------------------------------------
-// Create anchor point (green diamond)
+// Create anchor point (green diamond) — uses Sprite to always face camera
 // ---------------------------------------------------------------------------
-function createAnchorMesh() {
-  // Diamond shape: rotated square
-  const geometry = new THREE.PlaneGeometry(ANCHOR_SIZE, ANCHOR_SIZE);
-  const material = new THREE.MeshBasicMaterial({
-    color: 0x00ff00,
+function createAnchorSprite() {
+  // Create a small canvas for the diamond shape
+  const size = 32;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  // Draw diamond
+  const cx = size / 2, cy = size / 2, r = size / 2 - 2;
+  ctx.fillStyle = '#00ff00';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.lineTo(cx + r, cy);
+  ctx.lineTo(cx, cy + r);
+  ctx.lineTo(cx - r, cy);
+  ctx.closePath();
+  ctx.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({
+    map: texture,
     transparent: true,
     opacity: 0,
-    side: THREE.DoubleSide,
     depthWrite: false,
+    sizeAttenuation: true,
   });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.rotation.z = Math.PI / 4; // Rotate to diamond
-  return mesh;
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(ANCHOR_SIZE, ANCHOR_SIZE, 1);
+  sprite._anchorTexture = texture; // Store for disposal
+  return sprite;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,10 +86,9 @@ class Marker {
     this.normal = normal;
     this.endPos = surfacePos.clone().add(normal.clone().multiplyScalar(LINE_LENGTH));
 
-    // Create 3D objects
-    this.anchor = createAnchorMesh();
+    // Create 3D objects (sprite always faces camera)
+    this.anchor = createAnchorSprite();
     this.anchor.position.copy(surfacePos);
-    this.anchor.lookAt(surfacePos.clone().add(normal));
 
     const { line, geometry: lineGeom, material: lineMat } = createGuideLine();
     this.line = line;
@@ -180,7 +197,7 @@ class Marker {
   dispose() {
     this.scene.remove(this.anchor);
     this.scene.remove(this.line);
-    this.anchor.geometry.dispose();
+    if (this.anchor._anchorTexture) this.anchor._anchorTexture.dispose();
     this.anchor.material.dispose();
     this.lineGeom.dispose();
     this.lineMat.dispose();

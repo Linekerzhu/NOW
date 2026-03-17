@@ -5,10 +5,11 @@ import uuid
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from html import escape
 
 from fastapi import FastAPI, HTTPException, Header, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---------------------------------------------------------------------------
 # Config
@@ -16,6 +17,8 @@ from pydantic import BaseModel, Field
 DB_PATH = os.getenv("NOW_DB_PATH", "now.db")
 API_TOKEN = os.getenv("NOW_API_TOKEN", "now-dev-token")
 MAX_ITEMS_PER_LEVEL = 10
+
+VALID_CATEGORIES = {"政策", "项目", "安全", "党建", "民生", "科技", "其他"}
 
 # ---------------------------------------------------------------------------
 # Database helpers
@@ -31,27 +34,29 @@ def get_db() -> sqlite3.Connection:
 
 def init_db():
     conn = get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS news (
-            id TEXT PRIMARY KEY,
-            level TEXT NOT NULL CHECK(level IN ('L1','L2','L3')),
-            title TEXT NOT NULL,
-            summary TEXT NOT NULL DEFAULT '',
-            source TEXT NOT NULL DEFAULT '',
-            timestamp TEXT NOT NULL,
-            latitude REAL NOT NULL,
-            longitude REAL NOT NULL,
-            thumbnail_url TEXT DEFAULT '',
-            original_url TEXT DEFAULT '',
-            category TEXT NOT NULL DEFAULT '其他',
-            priority TEXT NOT NULL DEFAULT 'normal' CHECK(priority IN ('high','normal')),
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-    """)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_news_level ON news(level)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_news_ts ON news(timestamp DESC)")
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS news (
+                id TEXT PRIMARY KEY,
+                level TEXT NOT NULL CHECK(level IN ('L1','L2','L3')),
+                title TEXT NOT NULL,
+                summary TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT '',
+                timestamp TEXT NOT NULL,
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                thumbnail_url TEXT DEFAULT '',
+                original_url TEXT DEFAULT '',
+                category TEXT NOT NULL DEFAULT '其他',
+                priority TEXT NOT NULL DEFAULT 'normal' CHECK(priority IN ('high','normal')),
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_news_level ON news(level)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_news_ts ON news(timestamp DESC)")
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def fifo_trim(conn: sqlite3.Connection, level: str):
@@ -61,6 +66,42 @@ def fifo_trim(conn: sqlite3.Connection, level: str):
             SELECT id FROM news WHERE level = ? ORDER BY timestamp DESC LIMIT ?
         )
     """, (level, level, MAX_ITEMS_PER_LEVEL))
+
+
+def _insert_items(conn: sqlite3.Connection, items: list) -> tuple[int, set[str]]:
+    """Insert items with dedup via INSERT OR IGNORE. Returns (inserted_count, levels_touched)."""
+    inserted = 0
+    levels_touched = set()
+    for item in items:
+        cursor = conn.execute("""
+            INSERT OR IGNORE INTO news (id, level, title, summary, source, timestamp,
+                              latitude, longitude, thumbnail_url, original_url,
+                              category, priority)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            item.id, item.level, item.title, item.summary, item.source,
+            item.timestamp, item.latitude, item.longitude,
+            item.thumbnail_url, item.original_url,
+            item.category, item.priority,
+        ))
+        if cursor.rowcount > 0:
+            inserted += 1
+            levels_touched.add(item.level)
+
+    for level in levels_touched:
+        fifo_trim(conn, level)
+
+    return inserted, levels_touched
+
+
+def _compute_etag(conn: sqlite3.Connection) -> str:
+    row = conn.execute(
+        "SELECT MAX(created_at) as max_ts, COUNT(*) as cnt, GROUP_CONCAT(id) as ids FROM news"
+    ).fetchone()
+    ts = row["max_ts"] if row and row["max_ts"] else "empty"
+    count = row["cnt"] if row else 0
+    ids_hash = hash(row["ids"]) if row and row["ids"] else 0
+    return f'"{ts}-{count}-{ids_hash}"'
 
 
 # ---------------------------------------------------------------------------
@@ -76,21 +117,30 @@ class NewsItem(BaseModel):
     timestamp: str  # ISO 8601
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
-    thumbnail_url: str = ""
-    original_url: str = ""
-    category: str = Field(default="其他")
+    thumbnail_url: str = Field(default="", max_length=500)
+    original_url: str = Field(default="", max_length=500)
+    category: str = Field(default="其他", max_length=10)
     priority: str = Field(default="normal", pattern=r"^(high|normal)$")
+
+    @field_validator("timestamp")
+    @classmethod
+    def validate_timestamp(cls, v: str) -> str:
+        try:
+            datetime.fromisoformat(v)
+        except (ValueError, TypeError):
+            raise ValueError("timestamp must be a valid ISO 8601 datetime string")
+        return v
+
+    @field_validator("category")
+    @classmethod
+    def validate_category(cls, v: str) -> str:
+        if v not in VALID_CATEGORIES:
+            raise ValueError(f"category must be one of: {', '.join(VALID_CATEGORIES)}")
+        return v
 
 
 class PushPayload(BaseModel):
     items: list[NewsItem] = Field(min_length=1, max_length=30)
-
-
-class NewsResponse(BaseModel):
-    L1: list[dict]
-    L2: list[dict]
-    L3: list[dict]
-    updated_at: str
 
 
 # ---------------------------------------------------------------------------
@@ -110,58 +160,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Store latest ETag
-_etag_store: dict[str, str] = {"etag": ""}
-
-
-def _compute_etag(conn: sqlite3.Connection) -> str:
-    row = conn.execute("SELECT MAX(created_at) FROM news").fetchone()
-    ts = row[0] if row and row[0] else "empty"
-    count = conn.execute("SELECT COUNT(*) FROM news").fetchone()[0]
-    return f'"{ts}-{count}"'
-
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Endpoints — use `def` (not `async def`) so FastAPI runs them in a threadpool,
+# avoiding blocking the event loop with synchronous sqlite3 calls.
 # ---------------------------------------------------------------------------
 
 @app.get("/api/v1/health")
-async def health():
+def health():
     return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
-@app.post("/api/v1/push")
-async def push_news(payload: PushPayload, authorization: str = Header()):
-    token = authorization.replace("Bearer ", "").strip()
+@app.post("/api/v1/push", status_code=201)
+def push_news(payload: PushPayload, authorization: str = Header()):
+    token = authorization.removeprefix("Bearer ").strip()
     if token != API_TOKEN:
         raise HTTPException(status_code=401, detail="Invalid token")
 
     conn = get_db()
-    inserted = 0
-    levels_touched = set()
     try:
-        for item in payload.items:
-            # Deduplicate by id
-            existing = conn.execute("SELECT id FROM news WHERE id = ?", (item.id,)).fetchone()
-            if existing:
-                continue
-            conn.execute("""
-                INSERT INTO news (id, level, title, summary, source, timestamp,
-                                  latitude, longitude, thumbnail_url, original_url,
-                                  category, priority)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                item.id, item.level, item.title, item.summary, item.source,
-                item.timestamp, item.latitude, item.longitude,
-                item.thumbnail_url, item.original_url,
-                item.category, item.priority,
-            ))
-            inserted += 1
-            levels_touched.add(item.level)
-
-        for level in levels_touched:
-            fifo_trim(conn, level)
-
+        inserted, _ = _insert_items(conn, payload.items)
         conn.commit()
     finally:
         conn.close()
@@ -170,7 +188,7 @@ async def push_news(payload: PushPayload, authorization: str = Header()):
 
 
 @app.get("/api/v1/news")
-async def get_news(request: Request, response: Response):
+def get_news(request: Request, response: Response):
     conn = get_db()
     try:
         etag = _compute_etag(conn)
@@ -178,14 +196,19 @@ async def get_news(request: Request, response: Response):
         # Check If-None-Match
         client_etag = request.headers.get("if-none-match")
         if client_etag and client_etag == etag:
-            response.status_code = 304
-            return Response(status_code=304)
+            return Response(status_code=304, headers={"ETag": etag})
 
         result: dict[str, list] = {"L1": [], "L2": [], "L3": []}
         rows = conn.execute("SELECT * FROM news ORDER BY timestamp DESC").fetchall()
         for row in rows:
             item = dict(row)
-            level = item.pop("created_at", None) and item["level"]
+            level = item.get("level")
+            item.pop("created_at", None)
+            # Sanitize text fields for safe HTML rendering
+            item["title"] = escape(item.get("title", ""))
+            item["summary"] = escape(item.get("summary", ""))
+            item["source"] = escape(item.get("source", ""))
+            item["category"] = escape(item.get("category", ""))
             if level in result:
                 result[level].append(item)
 
@@ -205,8 +228,14 @@ async def get_news(request: Request, response: Response):
 # ---------------------------------------------------------------------------
 
 @app.post("/api/v1/seed")
-async def seed_data():
+def seed_data(authorization: str = Header(default="")):
     """Insert sample data for development/testing."""
+    # Allow unauthenticated in dev, but check token if provided
+    if authorization:
+        token = authorization.removeprefix("Bearer ").strip()
+        if token and token != API_TOKEN:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
     sample_items = [
         NewsItem(level="L1", title="国家电网发布新型电力系统行动方案",
                  summary="方案提出到2030年建成以新能源为主体的新型电力系统，推动能源绿色低碳转型",
@@ -249,30 +278,9 @@ async def seed_data():
                  source="金山供电", timestamp="2026-03-15T11:00:00+08:00",
                  latitude=30.6888, longitude=121.3200, category="安全"),
     ]
-    payload = PushPayload(items=sample_items)
     conn = get_db()
-    inserted = 0
-    levels_touched = set()
     try:
-        for item in payload.items:
-            existing = conn.execute("SELECT id FROM news WHERE id = ?", (item.id,)).fetchone()
-            if existing:
-                continue
-            conn.execute("""
-                INSERT INTO news (id, level, title, summary, source, timestamp,
-                                  latitude, longitude, thumbnail_url, original_url,
-                                  category, priority)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                item.id, item.level, item.title, item.summary, item.source,
-                item.timestamp, item.latitude, item.longitude,
-                item.thumbnail_url, item.original_url,
-                item.category, item.priority,
-            ))
-            inserted += 1
-            levels_touched.add(item.level)
-        for level in levels_touched:
-            fifo_trim(conn, level)
+        inserted, _ = _insert_items(conn, sample_items)
         conn.commit()
     finally:
         conn.close()

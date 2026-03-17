@@ -81,7 +81,9 @@ export function createCameraController(camera) {
     // L1 follow: subtly shift toward active info
     if (currentLevel === 'L1' && activeInfo && activeInfo.latitude != null) {
       const targetLon = activeInfo.longitude;
-      const diff = targetLon - (state.lon + orbitAngle * (180 / Math.PI));
+      let diff = targetLon - (state.lon + orbitAngle * (180 / Math.PI));
+      // Normalize to [-180, 180] to handle wraparound
+      diff = ((diff + 540) % 360) - 180;
       // Subtle follow: shift up to 5 degrees toward info
       const shift = Math.max(-5, Math.min(5, diff * 0.02));
       orbitAngle += shift * delta * (Math.PI / 180);
@@ -98,11 +100,18 @@ export function createCameraController(camera) {
    * @returns {gsap.core.Tween}
    */
   function transitionTo(level, onStart, onComplete) {
-    if (level === currentLevel || transitioning) return null;
+    if (transitioning) {
+      // Already transitioning — call onComplete immediately so callers don't hang
+      if (onComplete) setTimeout(onComplete, 0);
+      return null;
+    }
+    if (level === currentLevel) {
+      if (onComplete) setTimeout(onComplete, 0);
+      return null;
+    }
 
     const target = LEVEL_CONFIG[level];
     transitioning = true;
-    currentLevel = level;
     orbitAngle = 0;
 
     if (onStart) onStart();
@@ -115,6 +124,7 @@ export function createCameraController(camera) {
       ease: 'power2.inOut',
       onUpdate: () => applyState(),
       onComplete: () => {
+        currentLevel = level;  // Set only after animation completes
         transitioning = false;
         if (onComplete) onComplete();
       },

@@ -414,12 +414,12 @@ function createStars() {
 // ---------------------------------------------------------------------------
 // Create earth surface
 // ---------------------------------------------------------------------------
-function createEarthSurface(renderer, cameraPosition) {
+function createEarthSurface(renderer, cameraPosition, sharedCloudTex) {
   const loader = new THREE.TextureLoader();
   const dayTex = loader.load('/textures/earth-day-8k.jpg');
   const nightTex = loader.load('/textures/earth-night-2k.jpg');
   const normalTex = loader.load('/textures/earth-normal-2k.jpg');
-  const cloudTex = loader.load('/textures/earth-clouds-2k.jpg');
+  const cloudTex = sharedCloudTex;
 
   dayTex.colorSpace = THREE.SRGBColorSpace;
   nightTex.colorSpace = THREE.SRGBColorSpace;
@@ -510,13 +510,18 @@ export function createEarthScene(renderer, camera) {
   const earthGroup = new THREE.Group();
   earthGroup.scale.set(1, 0.9966, 1); // oblateness
 
-  const earth = createEarthSurface(renderer, cameraPosition);
   const clouds = createCloudLayer(cameraPosition);
+  const earth = createEarthSurface(renderer, cameraPosition, clouds.texture);
   const atmosphere = createAtmosphereGlow(cameraPosition);
   const stars = createStars();
 
-  earthGroup.add(clouds.mesh);
+  // Explicit render order: earth (opaque) first, then clouds (transparent), then atmosphere
+  earth.mesh.renderOrder = 0;
+  clouds.mesh.renderOrder = 1;
+  atmosphere.mesh.renderOrder = 2;
+
   earthGroup.add(earth.mesh);
+  earthGroup.add(clouds.mesh);
   earthGroup.add(atmosphere.mesh);
 
   // Ambient + directional light
@@ -567,6 +572,8 @@ export function createEarthScene(renderer, camera) {
     clouds.texture.dispose();
     atmosphere.geometry.dispose();
     atmosphere.material.dispose();
+    stars.geometry.dispose();
+    stars.material.dispose();
   }
 
   return {
