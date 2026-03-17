@@ -48,8 +48,6 @@ async function fetchNews() {
 // Polling
 // ---------------------------------------------------------------------------
 function startPolling() {
-  // Fetch immediately
-  fetchNews();
   state.pollTimer = setInterval(fetchNews, POLL_INTERVAL);
 }
 

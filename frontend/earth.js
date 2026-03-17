@@ -179,8 +179,8 @@ const earthFrag = `
     float oceanMask = smoothstep(0.18, 0.08, luminance) * smoothstep(1.1, 1.5, blueRatio);
     color *= mix(1.0, 0.85, oceanMask * terminator);
 
-    float ripple1 = noise(vUv.x * 800.0 + time * 2.0) * 0.5 + 0.5;
-    float ripple2 = noise(vUv.y * 600.0 - time * 1.5 + 100.0) * 0.5 + 0.5;
+    float ripple1 = noise(vUv.x * 800.0 + fract(time * 0.01) * 200.0) * 0.5 + 0.5;
+    float ripple2 = noise(vUv.y * 600.0 - fract(time * 0.0075) * 200.0 + 100.0) * 0.5 + 0.5;
     vec3 rippleNormal = normalize(perturbedNormal + vec3(ripple1 - 0.5, ripple2 - 0.5, 0.0) * 0.015 * oceanMask);
 
     vec3 halfDir = normalize(sunDir + viewDir);

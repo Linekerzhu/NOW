@@ -95,6 +95,9 @@ class Marker {
     this.lineGeom = lineGeom;
     this.lineMat = lineMat;
 
+    // Temp vector for line interpolation (avoids per-frame allocation)
+    this._tmpVec = new THREE.Vector3();
+
     // Set initial line (zero length)
     this._setLineLength(0);
 
@@ -108,7 +111,7 @@ class Marker {
   _setLineLength(t) {
     // t: 0..1, how much of the line is visible
     const start = this.surfacePos;
-    const end = this.surfacePos.clone().lerp(this.endPos, t);
+    const end = this._tmpVec.copy(this.surfacePos).lerp(this.endPos, t);
     const positions = this.lineGeom.attributes.position.array;
     positions[0] = start.x; positions[1] = start.y; positions[2] = start.z;
     positions[3] = end.x;   positions[4] = end.y;   positions[5] = end.z;

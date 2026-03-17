@@ -5,7 +5,7 @@ import uuid
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from html import escape
+import hashlib
 
 from fastapi import FastAPI, HTTPException, Header, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -95,12 +95,13 @@ def _insert_items(conn: sqlite3.Connection, items: list) -> tuple[int, set[str]]
 
 
 def _compute_etag(conn: sqlite3.Connection) -> str:
-    row = conn.execute(
-        "SELECT MAX(created_at) as max_ts, COUNT(*) as cnt, GROUP_CONCAT(id) as ids FROM news"
-    ).fetchone()
+    row = conn.execute("SELECT MAX(created_at) as max_ts, COUNT(*) as cnt FROM news").fetchone()
     ts = row["max_ts"] if row and row["max_ts"] else "empty"
     count = row["cnt"] if row else 0
-    ids_hash = hash(row["ids"]) if row and row["ids"] else 0
+    # Deterministic hash of all ids (ordered)
+    ids_rows = conn.execute("SELECT id FROM news ORDER BY id").fetchall()
+    ids_str = ",".join(r["id"] for r in ids_rows)
+    ids_hash = hashlib.md5(ids_str.encode()).hexdigest()[:12]
     return f'"{ts}-{count}-{ids_hash}"'
 
 
@@ -204,11 +205,6 @@ def get_news(request: Request, response: Response):
             item = dict(row)
             level = item.get("level")
             item.pop("created_at", None)
-            # Sanitize text fields for safe HTML rendering
-            item["title"] = escape(item.get("title", ""))
-            item["summary"] = escape(item.get("summary", ""))
-            item["source"] = escape(item.get("source", ""))
-            item["category"] = escape(item.get("category", ""))
             if level in result:
                 result[level].append(item)
 

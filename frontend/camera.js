@@ -133,6 +133,14 @@ export function createCameraController(camera) {
     return tween;
   }
 
+  /**
+   * Kill any in-progress camera transition tween immediately.
+   */
+  function killTransition() {
+    gsap.killTweensOf(state);
+    transitioning = false;
+  }
+
   function getCurrentLevel() {
     return currentLevel;
   }
@@ -144,6 +152,7 @@ export function createCameraController(camera) {
   return {
     update,
     transitionTo,
+    killTransition,
     getCurrentLevel,
     isTransitioning,
     applyState,

@@ -235,6 +235,7 @@ function interruptPresentation() {
   generation++;
   // Kill all running GSAP tweens on known targets
   gsap.killTweensOf('#hud');
+  cameraCtrl.killTransition();
   if (presentationState.marker) {
     const m = presentationState.marker;
     gsap.killTweensOf(m);
@@ -326,12 +327,10 @@ async function init() {
   setActiveLevelButton('L1');
   updateClock();
 
-  // Start data polling
-  startPolling();
-
-  // Seed dev data
+  // Seed dev data, then fetch, then start polling
   await seedData();
   await fetchNews();
+  startPolling();
 
   // Start render loop
   requestAnimationFrame(animate);
