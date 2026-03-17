@@ -1,0 +1,23 @@
+{
+  "name": "earth-globe",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "lint": "eslint . --ext .js --ignore-pattern node_modules --ignore-pattern dist",
+    "format": "prettier --write '**/*.{js,json,css,html}' --ignore-path node_modules"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.8",
+    "lil-gui": "^0.21.0",
+    "prettier": "^3.8.1",
+    "vite": "^6.0.0",
+    "vite-plugin-glsl": "^1.5.6",
+    "vitest": "^4.1.0"
+  }
+}
