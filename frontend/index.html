@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>此刻 — NOW Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- 3D Canvas -->
+  <canvas id="globe-canvas"></canvas>
+
+  <!-- DOM Overlay (cards + HUD) -->
+  <div id="overlay">
+    <!-- HUD -->
+    <div id="hud">
+      <!-- Top-left: level name -->
+      <div id="hud-top-left">
+        <div id="hud-level-name" class="hud-text-lg">> 此刻国网</div>
+        <div id="hud-level-code" class="hud-text-sm">SGCC_NOW</div>
+      </div>
+
+      <!-- Top-right: date/time + indicators -->
+      <div id="hud-top-right">
+        <div id="hud-date" class="hud-text-lg">2026.03.15</div>
+        <div id="hud-time" class="hud-text-sm">10:05:30</div>
+        <div id="hud-indicators" class="hud-text-sm">[■][□][□]</div>
+      </div>
+
+      <!-- Bottom: level switcher -->
+      <div id="hud-bottom">
+        <button class="level-btn" data-level="L1">> 此刻国网</button>
+        <button class="level-btn" data-level="L2">> 此刻上海电力</button>
+        <button class="level-btn" data-level="L3">> 此刻金山</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>
