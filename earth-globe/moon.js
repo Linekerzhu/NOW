@@ -5,6 +5,7 @@ import moonFragmentShader from './shaders/moon.frag';
 const J2000_EPOCH = new Date('2000-01-01T12:00:00Z').getTime();
 const MS_PER_DAY = 86400000;
 const DEG2RAD = Math.PI / 180;
+const textureLoader = new THREE.TextureLoader();
 
 /**
  * Simplified lunar position and rendering.
@@ -70,7 +71,6 @@ export function createMoon({ config, earthRadius, cameraPosition }) {
   const [segW, segH] = config.segments;
   const geometry = new THREE.SphereGeometry(moonRadius, segW, segH);
 
-  const textureLoader = new THREE.TextureLoader();
   const moonTexture = textureLoader.load('/textures/moon-2k.jpg');
   moonTexture.colorSpace = THREE.SRGBColorSpace;
 

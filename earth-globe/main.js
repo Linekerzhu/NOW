@@ -69,7 +69,7 @@ scene.add(sunLight);
 scene.add(new THREE.AmbientLight(CONFIG.lighting.ambientColor, CONFIG.lighting.ambientIntensity));
 
 // --- Camera ---
-const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, innerWidth / innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(CONFIG.camera.fov, innerWidth / innerHeight, 0.1, 2000);
 const sunAngle = Math.atan2(sunDir.x, sunDir.z);
 const cameraAngle = sunAngle + CONFIG.camera.sunAngleOffset;
 const cameraRadius = CONFIG.camera.distance * CONFIG.camera.distanceScale;
@@ -162,6 +162,11 @@ let lastSunUpdate = Date.now();
 const clock = new THREE.Clock();
 let animationTime = 0;
 
+// Pre-allocated temp vector for sun light position (avoids per-update clone)
+const _tmpSunLightPos = new THREE.Vector3();
+// Pre-allocated temp vector for controls.change calculations
+const _tmpCtrlOffset = new THREE.Vector3();
+
 // --- Per-frame context (reused object to avoid GC) ---
 const ctx = {
   sunDirection: sunDir,
@@ -227,7 +232,8 @@ function animate() {
     ctx.sunIntensity = newSunData.distanceFactor;
 
     // Update scene lighting (not managed by components)
-    sunLight.position.copy(newSunData.direction.clone().multiplyScalar(CONFIG.lighting.sunLightDistance));
+    _tmpSunLightPos.copy(newSunData.direction).multiplyScalar(CONFIG.lighting.sunLightDistance);
+    sunLight.position.copy(_tmpSunLightPos);
     sunLight.intensity = CONFIG.lighting.sunIntensityFactor * newSunData.distanceFactor;
 
     // Update moon position
@@ -517,14 +523,24 @@ if (import.meta.env.DEV) {
       }).listen();
 
     // Sync GUI from mouse-driven OrbitControls interactions
+    // Skip during camera animation (step() already syncs GUI)
     controls.addEventListener('change', () => {
-      const offset = camera.position.clone().sub(controls.target);
-      const r = offset.length();
+      if (_cameraAnim) return;
+      _tmpCtrlOffset.copy(camera.position).sub(controls.target);
+      const r = _tmpCtrlOffset.length();
       camState.distance       = Math.round(r * 10) / 10;
-      camState.elevation      = Math.round(THREE.MathUtils.radToDeg(Math.asin(offset.y / r)) * 10) / 10;
+      camState.elevation      = Math.round(THREE.MathUtils.radToDeg(Math.asin(_tmpCtrlOffset.y / r)) * 10) / 10;
       camState.latitudeOffset = Math.round(controls.target.y * 10) / 10;
       camState.focalLength    = Math.round(camera.getFocalLength());
     });
+
+    // Dev monitoring: log GPU resource usage periodically
+    window.setInterval(() => {
+      const info = renderer.info;
+      console.info(
+        `[GPU] Draw calls: ${info.render.calls}, Triangles: ${info.render.triangles}, Textures: ${info.memory.textures}, Geometries: ${info.memory.geometries}`,
+      );
+    }, 10000);
 
     // ==== Bloom ====
     const bloomFolder = gui.addFolder('Bloom');

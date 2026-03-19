@@ -35,9 +35,9 @@ describe('getSunDirection', () => {
   });
 
   it('perihelion has higher distance factor than aphelion', () => {
-    const perihelion = getSunDirection(new Date('2024-01-03T12:00:00Z'));
-    const aphelion = getSunDirection(new Date('2024-07-04T12:00:00Z'));
-    expect(perihelion.distanceFactor).toBeGreaterThan(aphelion.distanceFactor);
+    const perihelionFactor = getSunDirection(new Date('2024-01-03T12:00:00Z')).distanceFactor;
+    const aphelionFactor = getSunDirection(new Date('2024-07-04T12:00:00Z')).distanceFactor;
+    expect(perihelionFactor).toBeGreaterThan(aphelionFactor);
   });
 
   it('sun is roughly in +X direction at noon UTC', () => {

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import starsVertexShader from './shaders/stars.vert';
 import starsFragmentShader from './shaders/stars.frag';
 
+const textureLoader = new THREE.TextureLoader();
+
 /**
  * Creates a rich space background:
  * - A textured sky sphere with NASA Tycho star map (real Milky Way)
@@ -16,7 +18,7 @@ export function createStars({ config }) {
 
   // --- Layer 1: Milky Way sky sphere ---
   const skyGeometry = new THREE.SphereGeometry(config.skyRadius, ...config.skySegments);
-  const skyTexture = new THREE.TextureLoader().load('/textures/milkyway-4k.jpg');
+  const skyTexture = textureLoader.load('/textures/milkyway-4k.jpg');
   skyTexture.colorSpace = THREE.SRGBColorSpace;
 
   const skyMaterial = new THREE.MeshBasicMaterial({

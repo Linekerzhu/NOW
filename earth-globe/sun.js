@@ -12,9 +12,12 @@ const TWO_PI_365 = (2 * Math.PI) / 365;
  * - Returns additional data: declination, distance factor for eccentricity
  *
  * @param {Date} date - Current time
+ * @param {{ direction: THREE.Vector3, declination: number, distanceFactor: number }} [out] - Optional reusable output object (avoids GC)
  * @returns {{ direction: THREE.Vector3, declination: number, distanceFactor: number }}
  */
-export function getSunDirection(date) {
+const _defaultOut = { direction: new THREE.Vector3(), declination: 0, distanceFactor: 1 };
+
+export function getSunDirection(date, out = _defaultOut) {
   const start = new Date(date.getFullYear(), 0, 1);
   const dayOfYear = (date.getTime() - start.getTime()) / MS_PER_DAY + 1;
 
@@ -50,9 +53,8 @@ export function getSunDirection(date) {
   const y = Math.sin(decRad);
   const z = Math.cos(decRad) * Math.sin(hourAngle);
 
-  return {
-    direction: new THREE.Vector3(x, y, z).normalize(),
-    declination,       // degrees
-    distanceFactor,    // ~0.967 to ~1.033
-  };
+  out.direction.set(x, y, z).normalize();
+  out.declination = declination;
+  out.distanceFactor = distanceFactor;
+  return out;
 }

@@ -10,7 +10,7 @@
     "format": "prettier --write '**/*.{js,json,css,html}' --ignore-path node_modules"
   },
   "dependencies": {
-    "three": "^0.170.0"
+    "three": "0.170.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

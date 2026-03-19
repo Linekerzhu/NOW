@@ -25,9 +25,9 @@ void main() {
   // Wavelength-dependent: blue scatters ~5.5x more than red (1/λ⁴)
   // This creates natural blue at 90° and reddish at grazing angles
   vec3 rayleighCoeff = vec3(0.18, 0.42, 1.0); // proportional to 1/λ⁴ for RGB
-  float scatterAngle = acos(clamp(dot(viewDir, sunDir), -1.0, 1.0));
+  float cosTheta = dot(viewDir, sunDir);
   // Rayleigh phase function: (3/4)(1 + cos²θ)
-  float rayleighPhase = 0.75 * (1.0 + cos(scatterAngle) * cos(scatterAngle));
+  float rayleighPhase = 0.75 * (1.0 + cosTheta * cosTheta);
 
   // ===== Day-side atmosphere =====
   float daySide = smoothstep(-0.15, 0.4, sunFacing);
