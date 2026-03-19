@@ -38,11 +38,13 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
   // Shared with clouds.js — Three.js TextureLoader caches by URL, so the
   // same GPU texture is reused automatically.
   const cloudTex = textureLoader.load(textureConfig.clouds);
+  const heightTex = textureLoader.load(textureConfig.heightmap);
 
   dayTex.colorSpace = THREE.SRGBColorSpace;
   nightTex.colorSpace = THREE.SRGBColorSpace;
   normalTex.colorSpace = THREE.LinearSRGBColorSpace;
   cloudTex.colorSpace = THREE.LinearSRGBColorSpace;
+  heightTex.colorSpace = THREE.LinearSRGBColorSpace;
 
   const maxAniso = renderer
     ? renderer.capabilities.getMaxAnisotropy()
@@ -69,6 +71,8 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
       sunIntensity: { value: 1.0 },
       cloudUVOffset: { value: 0.0 },
       time: { value: 0.0 },
+      heightMap: { value: heightTex },
+      displacementScale: { value: (config.displacementScale ?? 0.15) * earthRadius },
       twilightIntensity: { value: sc.twilightIntensity ?? 0.42 },
       blueHourIntensity: { value: sc.blueHourIntensity ?? 0.16 },
       nightBrightness: { value: sc.nightBrightness ?? 0.53 },
@@ -95,6 +99,7 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
       dayTex.dispose();
       nightTex.dispose();
       normalTex.dispose();
+      heightTex.dispose();
       // cloudTex is NOT disposed here — it shares the same GPU texture
       // with clouds.js via Three.js TextureLoader URL cache.
       // Ownership belongs to clouds.js which disposes it.

@@ -6,10 +6,11 @@
 export const CONFIG = {
   earth: {
     radius: 10,
-    segments: [96, 48],
+    segments: [512, 256],
     oblateness: 0.9966,
     ambientDim: 0.08,
     normalStrength: 2.3,
+    displacementScale: 0.15,
   },
 
   clouds: {
@@ -105,6 +106,7 @@ export const CONFIG = {
     night: '/textures/earth-night-8k.jpg',
     normal: '/textures/earth-normal-2k.jpg',
     clouds: '/textures/earth-clouds-2k.jpg',
+    heightmap: '/textures/earth-topo-5400x2700.jpg',
   },
 
   earthSurface: {
