@@ -8,18 +8,10 @@ import { CONFIG } from './config.js';
 const overlay = document.createElement('div');
 overlay.id = 'loading-overlay';
 overlay.innerHTML = `
-  <div class="loading-text" style="text-align:center; display:flex; flex-direction:column; gap:8px;">
+  <div class="loading-text">
     <span>Loading Earth…</span>
-    <span id="loading-progress" style="font-size:0.8em; opacity:0.7; font-variant-numeric:tabular-nums;">0%</span>
+    <span id="loading-progress">0%</span>
   </div>`;
-Object.assign(overlay.style, {
-  position: 'fixed', inset: '0', zIndex: '1000',
-  background: '#000', display: 'flex',
-  alignItems: 'center', justifyContent: 'center',
-  transition: 'opacity 1.5s ease',
-  fontFamily: 'system-ui, sans-serif',
-  color: '#556', fontSize: '14px', letterSpacing: '3px',
-});
 
 /** Show the loading overlay (adds to DOM). */
 export function showLoading() {
@@ -44,9 +36,9 @@ export function setProgress(percent) {
  */
 export function showWebGLError() {
   overlay.innerHTML = `
-    <div style="text-align:center; display:flex; flex-direction:column; gap:12px; max-width:400px; padding:20px;">
-      <span style="font-size:1.2em;">⚠️ WebGL Not Available</span>
-      <span style="opacity:0.6; line-height:1.6;">
+    <div class="error-text">
+      <span class="error-title">⚠️ WebGL Not Available</span>
+      <span class="error-message">
         Your browser or device does not support WebGL, which is required to render the 3D Earth.
         Please try a modern browser (Chrome, Firefox, Safari, Edge).
       </span>

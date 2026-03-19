@@ -1,0 +1,6 @@
+node_modules/
+dist/
+
+# Large texture source files (use tiles instead)
+public/textures/earth-day-16k.jpg
+public/textures/earth-night-8k.jpg

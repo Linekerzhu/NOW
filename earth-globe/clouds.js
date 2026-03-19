@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import vertexShader from './shaders/clouds.vert';
 import fragmentShader from './shaders/clouds.frag';
 
+const textureLoader = new THREE.TextureLoader();
+
 /**
  * Create the cloud layer component.
  *
@@ -10,10 +12,11 @@ import fragmentShader from './shaders/clouds.frag';
  * @param {number} deps.earthRadius - earth radius in scene units
  * @returns {{ object3D: THREE.Mesh, cloudUVOffset: number, update: (ctx: import('./types.js').FrameContext) => void, dispose: () => void }}
  */
-export function createClouds({ config, earthRadius, cameraPosition }) {
+export function createClouds({ config, textureConfig, earthRadius, cameraPosition }) {
   // Note: same texture URL as earth.js cloudTexture — Three.js TextureLoader
   // caches by URL, so they share the same GPU texture.
-  const texture = new THREE.TextureLoader().load('/textures/earth-clouds-2k.jpg');
+  const texPath = (textureConfig && textureConfig.clouds) || '/textures/earth-clouds-2k.jpg';
+  const texture = textureLoader.load(texPath);
   texture.colorSpace = THREE.LinearSRGBColorSpace;
 
   const [segW, segH] = config.segments;
@@ -27,6 +30,7 @@ export function createClouds({ config, earthRadius, cameraPosition }) {
       sunDirection: { value: new THREE.Vector3(1, 0, 0) },
       cameraPos: { value: cameraPosition },
       opacity: { value: config.opacity },
+      nightCloudOpacity: { value: config.nightCloudOpacity ?? 0.88 },
     },
     transparent: true,
     depthWrite: false,

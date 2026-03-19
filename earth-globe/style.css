@@ -25,3 +25,51 @@ body::after {
 canvas {
   display: block;
 }
+
+/* Loading overlay */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 1.5s ease;
+  font-family: system-ui, sans-serif;
+  color: #556;
+  font-size: 14px;
+  letter-spacing: 3px;
+}
+
+#loading-overlay .loading-text {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#loading-progress {
+  font-size: 0.8em;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+/* WebGL error state */
+#loading-overlay .error-text {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+  padding: 20px;
+}
+
+#loading-overlay .error-title {
+  font-size: 1.2em;
+}
+
+#loading-overlay .error-message {
+  opacity: 0.6;
+  line-height: 1.6;
+}

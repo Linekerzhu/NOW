@@ -2,6 +2,7 @@ uniform sampler2D cloudTexture;
 uniform vec3 sunDirection;
 uniform vec3 cameraPos;
 uniform float opacity;
+uniform float nightCloudOpacity;
 
 varying vec3 vNormal;
 varying vec2 vUv;
@@ -20,7 +21,8 @@ void main() {
 
   float daySide = smoothstep(-0.15, 0.15, sunDot);
   vec3 dayCloud = vec3(1.0) * (0.6 + 0.4 * max(sunDot, 0.0));
-  vec3 nightCloud = vec3(0.08, 0.1, 0.14);
+  // Night-side clouds: moonlit blue-gray glow (faintly visible but continuous)
+  vec3 nightCloud = vec3(0.06, 0.08, 0.12);
 
   // === FORWARD SCATTERING (Silver Lining) ===
   // When sun is behind the cloud from viewer's perspective
@@ -49,7 +51,8 @@ void main() {
   cloudColor += silverColor;
   cloudColor += subsurfaceColor;
 
-  float finalOpacity = cloudAlpha * opacity * mix(0.08, 1.0, daySide);
+  // Night-side clouds remain visible (moonlit) — smooth transition across terminator
+  float finalOpacity = cloudAlpha * opacity * mix(nightCloudOpacity, 1.0, daySide);
   // Silver lining adds opacity at edges
   finalOpacity += silverLining * edgeMask * daySide * 0.15;
   finalOpacity = clamp(finalOpacity, 0.0, 1.0);

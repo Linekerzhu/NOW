@@ -8,12 +8,13 @@ export const CONFIG = {
     radius: 10,
     segments: [96, 48],
     oblateness: 0.9966,
-    ambientDim: 0.12,
-    normalStrength: 4.0,
+    ambientDim: 0.08,
+    normalStrength: 2.3,
   },
 
   clouds: {
-    opacity: 0.35,
+    opacity: 0.1,
+    nightCloudOpacity: 0.88,
     heightFactor: 1.005,
     driftSpeed: 0.00002,
     segments: [96, 48],
@@ -79,7 +80,7 @@ export const CONFIG = {
   },
 
   renderer: {
-    toneMappingExposure: 1.15,
+    toneMappingExposure: 1.0,
   },
 
   animation: {
@@ -90,5 +91,62 @@ export const CONFIG = {
   loading: {
     fallbackTimeout: 15000,
     fadeOutDuration: 1600,
+  },
+
+  textures: {
+    dayTiles: {
+      basePath: '/textures/tiles/earth-day-16k',
+      cols: 4,
+      rows: 2,
+      tileWidth: 5400,
+      tileHeight: 5400,
+      placeholder: '/textures/earth-day-8k.jpg',
+    },
+    night: '/textures/earth-night-8k.jpg',
+    normal: '/textures/earth-normal-2k.jpg',
+    clouds: '/textures/earth-clouds-2k.jpg',
+  },
+
+  earthSurface: {
+    twilightIntensity: 0.42,
+    blueHourIntensity: 0.16,
+    nightBrightness: 0.53,
+    cityLightBoost: 0.75,
+  },
+
+
+  presets: {
+    animationDuration: 2000,          // ms for camera transition
+
+    oneWorld: {
+      label: '🌍 寰宇一家',
+      longitude: null,                // null = follow sun position
+      elevation: 12.6,
+      distance: 27.5,
+      focalLength: null,              // null = use default (from camera.fov)
+      latitudeOffset: 0,
+      autoRotate: true,
+      autoRotateSpeed: 0.3,
+    },
+    chinaGrid: {
+      label: '⚡ 今日国网',
+      longitude: 105,                 // °E — central China
+      elevation: -23.4,
+      distance: 14.8,
+      focalLength: 37,
+      latitudeOffset: 8.5,
+      autoRotate: false,
+      autoRotateSpeed: 0.3,
+    },
+    shanghai: {
+      label: '🏙️ 今日上海',
+      longitude: 121.5,              // °E — Shanghai
+      elevation: 46.7,
+      distance: 14.3,
+      focalLength: 200,
+      latitudeOffset: -3.9,
+      autoRotate: false,
+      autoRotateSpeed: 0.3,
+    },
   },
 };

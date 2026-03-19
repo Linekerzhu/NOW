@@ -16,7 +16,7 @@ const TWO_PI_365 = (2 * Math.PI) / 365;
  */
 export function getSunDirection(date) {
   const start = new Date(date.getFullYear(), 0, 1);
-  const dayOfYear = (date - start) / MS_PER_DAY + 1;
+  const dayOfYear = (date.getTime() - start.getTime()) / MS_PER_DAY + 1;
 
   // UTC hour (precise to seconds)
   const hourUTC = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;

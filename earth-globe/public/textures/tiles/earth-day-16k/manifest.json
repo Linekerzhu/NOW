@@ -1,0 +1,50 @@
+{
+  "width": 21600,
+  "height": 10800,
+  "cols": 4,
+  "rows": 2,
+  "tileWidth": 5400,
+  "tileHeight": 5400,
+  "tiles": [
+    {
+      "col": 0,
+      "row": 0,
+      "file": "col0_row0.jpg"
+    },
+    {
+      "col": 1,
+      "row": 0,
+      "file": "col1_row0.jpg"
+    },
+    {
+      "col": 2,
+      "row": 0,
+      "file": "col2_row0.jpg"
+    },
+    {
+      "col": 3,
+      "row": 0,
+      "file": "col3_row0.jpg"
+    },
+    {
+      "col": 0,
+      "row": 1,
+      "file": "col0_row1.jpg"
+    },
+    {
+      "col": 1,
+      "row": 1,
+      "file": "col1_row1.jpg"
+    },
+    {
+      "col": 2,
+      "row": 1,
+      "file": "col2_row1.jpg"
+    },
+    {
+      "col": 3,
+      "row": 1,
+      "file": "col3_row1.jpg"
+    }
+  ]
+}

@@ -12,6 +12,10 @@ uniform float normalStrength;
 uniform float sunIntensity;
 uniform float cloudUVOffset;
 uniform float time;
+uniform float twilightIntensity;
+uniform float blueHourIntensity;
+uniform float nightBrightness;
+uniform float cityLightBoost;
 
 varying vec3 vNormal;
 varying vec2 vUv;
@@ -41,8 +45,8 @@ void main() {
   // --- Boost city lights with gradual transition ---
   float cityBrightness = max(nightColor.r, max(nightColor.g, nightColor.b));
   float glowFactor = smoothstep(0.05, 0.5, cityBrightness);
-  nightColor *= 2.0;
-  nightColor += vec3(1.0, 0.8, 0.4) * glowFactor * 0.4;
+  nightColor *= 2.0 * cityLightBoost;
+  nightColor += vec3(1.0, 0.8, 0.4) * glowFactor * 0.4 * cityLightBoost;
 
   // === ATMOSPHERIC REFRACTION ===
   float refractionOffset = 0.015;
@@ -63,7 +67,7 @@ void main() {
   // === BLUE HOUR BAND ===
   // The blue hour occurs between civil and nautical twilight (-6° to -12° solar altitude)
   float blueHourBand = smoothstep(-0.22, -0.10, sunDot) * smoothstep(-0.03, -0.10, sunDot);
-  color += vec3(0.04, 0.06, 0.14) * blueHourBand;
+  color += vec3(0.04, 0.06, 0.14) * blueHourBand * blueHourIntensity;
 
   // --- Day-side diffuse with normal map ---
   float diffuse = max(sunDotBumped, 0.0);
@@ -86,11 +90,11 @@ void main() {
 
   // --- Night ambient illumination + earthshine ---
   float nightAmount = 1.0 - terminator;
-  color += vec3(0.003, 0.004, 0.008) * nightAmount;
+  color += vec3(0.003, 0.004, 0.008) * nightAmount * nightBrightness;
 
   // Earthshine: faint bluish fill light on night-side (reflected sunlight from atmosphere)
   float earthshineFresnel = pow(fresnelFactor(viewDir, N), 3.0);
-  color += vec3(0.008, 0.012, 0.025) * nightAmount * (0.4 + earthshineFresnel * 0.6);
+  color += vec3(0.008, 0.012, 0.025) * nightAmount * (0.4 + earthshineFresnel * 0.6) * nightBrightness;
 
   // === AIRGLOW ===
   float viewFresnel = fresnelFactor(viewDir, N);
@@ -101,7 +105,7 @@ void main() {
 
   // --- Twilight warm atmospheric scattering ---
   float twilightBand = smoothstep(-0.2, 0.0, sunDot) * smoothstep(0.2, 0.0, sunDot);
-  color += vec3(0.15, 0.08, 0.03) * twilightBand;
+  color += vec3(0.15, 0.08, 0.03) * twilightBand * twilightIntensity;
 
   // === OCEAN SUN GLINT ===
   float luminance = dot(dayColor, vec3(0.299, 0.587, 0.114));

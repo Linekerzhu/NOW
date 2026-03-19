@@ -65,7 +65,7 @@ function getMoonPosition(date, earthRadius, distanceFactor) {
  * @param {number} deps.earthRadius - earth radius in scene units
  * @returns {{ object3D: THREE.Mesh, update: (ctx) => void, setPosition: (date: Date) => void, dispose: () => void }}
  */
-export function createMoon({ config, earthRadius }) {
+export function createMoon({ config, earthRadius, cameraPosition }) {
   const moonRadius = earthRadius * config.radiusFactor;
   const [segW, segH] = config.segments;
   const geometry = new THREE.SphereGeometry(moonRadius, segW, segH);
@@ -81,8 +81,11 @@ export function createMoon({ config, earthRadius }) {
       moonTexture: { value: moonTexture },
       sunDirection: { value: new THREE.Vector3(1, 0, 0) },
       earthPosition: { value: new THREE.Vector3(0, 0, 0) },
+      cameraPos: { value: cameraPosition || new THREE.Vector3(0, 0, 30) },
       sunIntensity: { value: 1.0 },
     },
+    transparent: true,
+    depthWrite: false,
   });
 
   const object3D = new THREE.Mesh(geometry, material);
@@ -94,8 +97,7 @@ export function createMoon({ config, earthRadius }) {
     update(ctx) {
       material.uniforms.sunDirection.value.copy(ctx.sunDirection);
       material.uniforms.sunIntensity.value = ctx.sunIntensity;
-      // Earth is at origin in our scene
-      material.uniforms.earthPosition.value.set(0, 0, 0);
+      // cameraPos is a live reference — no per-frame copy needed
     },
 
     /** Update moon position from current date (called periodically). */

@@ -1,6 +1,7 @@
 uniform sampler2D moonTexture;
 uniform vec3 sunDirection;
 uniform vec3 earthPosition;
+uniform vec3 cameraPos;
 uniform float sunIntensity;
 
 varying vec3 vNormal;
@@ -21,7 +22,7 @@ void main() {
   float A = 1.0 - 0.5 * sigma2 / (sigma2 + 0.33);
   float B_coeff = 0.45 * sigma2 / (sigma2 + 0.09);
 
-  vec3 viewDir = normalize(-vWorldPosition); // approximate: from origin
+  vec3 viewDir = normalize(cameraPos - vWorldPosition);
   float NdotL = max(dot(N, sunDir), 0.0);
   float NdotV = max(dot(N, viewDir), 0.0);
 
@@ -57,5 +58,14 @@ void main() {
   // Slight base ambient to avoid pure black
   color += surfaceColor * vec3(0.010, 0.012, 0.015);
 
-  gl_FragColor = vec4(color, 1.0);
+  // Alpha based on brightness — dark unlit regions become fully transparent
+  // to avoid black rectangle artifacts in bloom post-processing.
+  // Wide smoothstep range prevents hard alpha edges.
+  float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  float finalAlpha = smoothstep(0.0, 0.08, luminance);
+
+  // Discard truly black fragments to prevent any depth/blend interference
+  if (finalAlpha < 0.001) discard;
+
+  gl_FragColor = vec4(color, finalAlpha);
 }

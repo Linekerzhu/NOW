@@ -1,26 +1,43 @@
 import * as THREE from 'three';
 import vertexShader from './shaders/earth.vert';
 import fragmentShader from './shaders/earth.frag';
+import { createTiledTexture } from './tiledTexture.js';
 
 /**
  * Create the Earth surface component.
  *
  * @param {object} deps
  * @param {object} deps.config - CONFIG.earth
+ * @param {object} deps.textureConfig - CONFIG.textures
  * @param {number} deps.earthRadius - earth radius in scene units
  * @param {THREE.WebGLRenderer} deps.renderer - for anisotropy query
  * @param {THREE.Vector3} deps.cameraPosition - live camera position reference
  * @returns {{ object3D: THREE.Mesh, update: (ctx) => void, dispose: () => void }}
  */
-export function createEarth({ config, earthRadius, renderer, cameraPosition }) {
+export function createEarth({ config, textureConfig, surfaceConfig, earthRadius, renderer, cameraPosition }) {
+  const sc = surfaceConfig || {};
   const textureLoader = new THREE.TextureLoader();
 
-  const dayTex = textureLoader.load('/textures/earth-day-8k.jpg');
-  const nightTex = textureLoader.load('/textures/earth-night-2k.jpg');
-  const normalTex = textureLoader.load('/textures/earth-normal-2k.jpg');
+  // --- Day texture: tiled progressive loading (16K) with 8K placeholder ---
+  const tileConfig = textureConfig.dayTiles;
+  const tiledDay = createTiledTexture({
+    basePath: tileConfig.basePath,
+    cols: tileConfig.cols,
+    rows: tileConfig.rows,
+    tileWidth: tileConfig.tileWidth,
+    tileHeight: tileConfig.tileHeight,
+    placeholder: tileConfig.placeholder,
+    onProgress: (loaded, total) => {
+      console.info(`[Earth] Day texture tile ${loaded}/${total}`);
+    },
+  });
+  const dayTex = tiledDay.texture;
+
+  const nightTex = textureLoader.load(textureConfig.night);
+  const normalTex = textureLoader.load(textureConfig.normal);
   // Shared with clouds.js — Three.js TextureLoader caches by URL, so the
   // same GPU texture is reused automatically.
-  const cloudTex = textureLoader.load('/textures/earth-clouds-2k.jpg');
+  const cloudTex = textureLoader.load(textureConfig.clouds);
 
   dayTex.colorSpace = THREE.SRGBColorSpace;
   nightTex.colorSpace = THREE.SRGBColorSpace;
@@ -52,6 +69,10 @@ export function createEarth({ config, earthRadius, renderer, cameraPosition }) {
       sunIntensity: { value: 1.0 },
       cloudUVOffset: { value: 0.0 },
       time: { value: 0.0 },
+      twilightIntensity: { value: sc.twilightIntensity ?? 0.42 },
+      blueHourIntensity: { value: sc.blueHourIntensity ?? 0.16 },
+      nightBrightness: { value: sc.nightBrightness ?? 0.53 },
+      cityLightBoost: { value: sc.cityLightBoost ?? 0.75 },
     },
   });
 
@@ -68,6 +89,7 @@ export function createEarth({ config, earthRadius, renderer, cameraPosition }) {
     },
 
     dispose() {
+      tiledDay.cancel();
       geometry.dispose();
       material.dispose();
       dayTex.dispose();
