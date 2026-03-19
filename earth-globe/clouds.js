@@ -47,24 +47,6 @@ export function createClouds({ config, textureConfig, earthRadius, cameraPositio
       return object3D.rotation.y / (Math.PI * 2);
     },
 
-    /**
-     * Replace the cloud texture at runtime (e.g. with satellite imagery).
-     * Also updates the earth shader's cloudTexture for shadow sync.
-     *
-     * @param {THREE.Texture} newTexture
-     * @param {THREE.ShaderMaterial} [earthMaterial] - Earth material for cloud shadow sync
-     */
-    setCloudTexture(newTexture, earthMaterial) {
-      const old = material.uniforms.cloudTexture.value;
-      material.uniforms.cloudTexture.value = newTexture;
-      if (earthMaterial && earthMaterial.uniforms.cloudTexture) {
-        earthMaterial.uniforms.cloudTexture.value = newTexture;
-      }
-      if (old && old !== texture) {
-        old.dispose(); // dispose previous satellite texture, but not the original static one
-      }
-    },
-
     /** @param {import('./types.js').FrameContext} ctx */
     update(ctx) {
       // Clouds drift (delta-based, very slow relative to earth surface)
