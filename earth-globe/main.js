@@ -64,7 +64,7 @@ const sunLight = new THREE.DirectionalLight(
   CONFIG.lighting.sunColor,
   CONFIG.lighting.sunIntensityFactor * sunData.distanceFactor,
 );
-sunLight.position.copy(sunDir.clone().multiplyScalar(CONFIG.lighting.sunLightDistance));
+sunLight.position.copy(sunDir).multiplyScalar(CONFIG.lighting.sunLightDistance);
 scene.add(sunLight);
 scene.add(new THREE.AmbientLight(CONFIG.lighting.ambientColor, CONFIG.lighting.ambientIntensity));
 
