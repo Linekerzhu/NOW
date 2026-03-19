@@ -14,6 +14,7 @@ import { createMoon } from './moon.js';
 import { getSunDirection } from './sun.js';
 import { createSun } from './sunVisual.js';
 import { showLoading, hideLoading, setProgress, showWebGLError } from './loading.js';
+import { fetchSatelliteClouds, getDateDaysAgo } from './satelliteClouds.js';
 
 // ============================================================================
 //  [Improvement #5] WebGL compatibility detection
@@ -156,6 +157,31 @@ THREE.DefaultLoadingManager.onLoad = () => {
 
 // Fallback: remove loading overlay even if textures fail
 setTimeout(() => hideLoading(), CONFIG.loading.fallbackTimeout);
+
+// --- Satellite cloud imagery (async, non-blocking) ---
+let _satelliteClouds = null;
+
+/** Load (or reload) satellite cloud texture for a given date string. */
+function loadSatelliteClouds(dateStr) {
+  // Cancel any in-flight fetch
+  if (_satelliteClouds) _satelliteClouds.cancel();
+
+  const sc = fetchSatelliteClouds({
+    date: dateStr,
+    onProgress: (loaded, total) => {
+      console.info(`[Clouds] Satellite tile ${loaded}/${total}`);
+    },
+  });
+  _satelliteClouds = sc;
+
+  sc.promise.then(() => {
+    if (_satelliteClouds !== sc) return; // superseded by newer fetch
+    clouds.setCloudTexture(sc.texture, earth.object3D.material);
+    console.info('[Clouds] Satellite cloud texture applied');
+  }).catch(err => {
+    console.warn('[Clouds] Satellite load failed, keeping static texture:', err);
+  });
+}
 
 // --- Timers ---
 let lastSunUpdate = Date.now();
@@ -333,6 +359,8 @@ if (import.meta.env.DEV) {
       clouds,
       animState,
       _tmpCtrlOffset,
+      loadSatelliteClouds,
+      getDateDaysAgo,
     }).then(gui => { _guiInstance = gui; });
   });
 }

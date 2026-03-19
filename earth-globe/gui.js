@@ -31,6 +31,8 @@ export async function initDevGUI({
   clouds,
   animState,
   _tmpCtrlOffset,
+  loadSatelliteClouds,
+  getDateDaysAgo,
 }) {
   const { GUI } = await import('lil-gui');
   const gui = new GUI({ title: '🌍 Earth Globe' });
@@ -278,6 +280,24 @@ export async function initDevGUI({
   const cloudFolder = gui.addFolder('Clouds');
   cloudFolder.add(cloudUniforms.opacity, 'value', 0, 1, 0.01).name('day opacity');
   cloudFolder.add(cloudUniforms.nightCloudOpacity, 'value', 0, 1, 0.01).name('night opacity');
+
+  // ==== Satellite Clouds ====
+  if (loadSatelliteClouds && getDateDaysAgo) {
+    const satFolder = gui.addFolder('🛰️ Satellite Clouds');
+    const satState = { date: '今天' };
+    const dateOptions = { '今天': 0, '昨天': 1, '前天': 2, '3天前': 3 };
+    satFolder.add(satState, 'date', Object.keys(dateOptions)).name('日期').onChange(label => {
+      const daysAgo = dateOptions[label];
+      loadSatelliteClouds(getDateDaysAgo(daysAgo));
+    });
+    satFolder.add({ load: () => {
+      const daysAgo = dateOptions[satState.date] || 0;
+      loadSatelliteClouds(getDateDaysAgo(daysAgo));
+    }}, 'load').name('🔄 加载云图');
+
+    // Auto-load today's satellite clouds on startup
+    loadSatelliteClouds(getDateDaysAgo(0));
+  }
 
   return gui;
 }
