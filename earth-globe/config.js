@@ -16,7 +16,7 @@ export const CONFIG = {
   clouds: {
     opacity: 0.1,
     nightCloudOpacity: 0.88,
-    heightFactor: 1.005,
+    heightFactor: 1.012,
     driftSpeed: 0.00002,
     segments: [96, 48],
   },
@@ -92,6 +92,18 @@ export const CONFIG = {
   loading: {
     fallbackTimeout: 15000,
     fadeOutDuration: 1600,
+  },
+
+  weather: {
+    enabled: false,              // manual-only: use GUI '☁️ Weather Data → enabled' or 'refresh now'
+    refreshInterval: 30 * 60000,  // 30 minutes
+    gridResolution: 30,           // degrees between sample points
+    textureWidth: 512,
+    textureHeight: 256,
+    blurRadius: 12,
+    contrast: 1.2,
+    noiseStrength: 0.15,
+    noiseScale: 4.0,
   },
 
   textures: {

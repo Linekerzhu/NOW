@@ -14,6 +14,8 @@ import { createMoon } from './moon.js';
 import { getSunDirection } from './sun.js';
 import { createSun } from './sunVisual.js';
 import { showLoading, hideLoading, setProgress, showWebGLError } from './loading.js';
+import { buildGrid, fetchCloudCover } from './weatherService.js';
+import { generateCloudTexture } from './weatherCloudTexture.js';
 
 // ============================================================================
 //  [Improvement #5] WebGL compatibility detection
@@ -141,6 +143,51 @@ scene.add(sun.object3D);
 // Components in update order (clouds before earth for cloudUVOffset sync)
 const components = [clouds, earth, atmosphere, aurora, stars, moon, sun];
 
+// --- Weather system ---
+const weatherGrid = buildGrid(CONFIG.weather.gridResolution);
+let lastWeatherUpdate = 0; // force immediate first fetch
+let weatherTexture = null; // reusable CanvasTexture
+const weatherState = {
+  enabled: CONFIG.weather.enabled,
+  blurRadius: CONFIG.weather.blurRadius,
+  contrast: CONFIG.weather.contrast,
+  noiseStrength: CONFIG.weather.noiseStrength,
+  noiseScale: CONFIG.weather.noiseScale,
+  lastFetchTime: null,
+  status: 'idle', // 'idle' | 'fetching' | 'ok' | 'error'
+};
+
+async function refreshWeather() {
+  if (!weatherState.enabled) return;
+  weatherState.status = 'fetching';
+  const data = await fetchCloudCover(weatherGrid);
+  if (!data) {
+    weatherState.status = 'error';
+    return;
+  }
+  weatherTexture = generateCloudTexture(
+    data,
+    {
+      width: CONFIG.weather.textureWidth,
+      height: CONFIG.weather.textureHeight,
+      blurRadius: weatherState.blurRadius,
+      contrast: weatherState.contrast,
+      noiseStrength: weatherState.noiseStrength,
+      noiseScale: weatherState.noiseScale,
+    },
+    weatherTexture,
+  );
+  clouds.setCloudTexture(weatherTexture);
+  weatherState.lastFetchTime = new Date();
+  weatherState.status = 'ok';
+  console.info('[Weather] Cloud texture updated from Open-Meteo data');
+}
+
+// Kick off initial weather fetch (non-blocking)
+if (CONFIG.weather.enabled) {
+  refreshWeather();
+}
+
 // --- Loading manager hooks (uses extracted loading.js) ---
 THREE.DefaultLoadingManager.onError = (url) => {
   console.warn('Failed to load:', url);
@@ -239,6 +286,12 @@ function animate() {
     moon.setPosition(new Date());
   }
 
+  // --- Periodic weather refresh ---
+  if (weatherState.enabled && now - lastWeatherUpdate > CONFIG.weather.refreshInterval) {
+    lastWeatherUpdate = now;
+    refreshWeather();
+  }
+
   // --- Update all components uniformly ---
   for (const component of components) {
     component.update(ctx);
@@ -333,6 +386,8 @@ if (import.meta.env.DEV) {
       clouds,
       animState,
       _tmpCtrlOffset,
+      weatherState,
+      refreshWeather,
     }).then(gui => { _guiInstance = gui; });
   });
 }

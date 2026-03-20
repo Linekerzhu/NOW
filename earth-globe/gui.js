@@ -31,6 +31,8 @@ export async function initDevGUI({
   clouds,
   animState,
   _tmpCtrlOffset,
+  weatherState,
+  refreshWeather,
 }) {
   const { GUI } = await import('lil-gui');
   const gui = new GUI({ title: '🌍 Earth Globe' });
@@ -278,6 +280,20 @@ export async function initDevGUI({
   const cloudFolder = gui.addFolder('Clouds');
   cloudFolder.add(cloudUniforms.opacity, 'value', 0, 1, 0.01).name('day opacity');
   cloudFolder.add(cloudUniforms.nightCloudOpacity, 'value', 0, 1, 0.01).name('night opacity');
+
+  // ==== Weather (sub-folder of Clouds) ====
+  if (weatherState) {
+    const weatherFolder = cloudFolder.addFolder('☁️ Weather Data');
+    weatherFolder.add(weatherState, 'enabled').name('enabled').onChange(val => {
+      if (!val) clouds.resetToStaticTexture();
+      else refreshWeather();
+    });
+    weatherFolder.add(weatherState, 'blurRadius', 0, 20, 1).name('blur radius');
+    weatherFolder.add(weatherState, 'contrast', 0.5, 3, 0.05).name('contrast');
+    weatherFolder.add(weatherState, 'noiseStrength', 0, 0.5, 0.01).name('noise strength');
+    weatherFolder.add(weatherState, 'noiseScale', 1, 12, 0.5).name('noise scale');
+    weatherFolder.add({ refresh: () => refreshWeather() }, 'refresh').name('🔄 refresh now');
+  }
 
   return gui;
 }

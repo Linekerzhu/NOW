@@ -39,12 +39,44 @@ export function createClouds({ config, textureConfig, earthRadius, cameraPositio
 
   const object3D = new THREE.Mesh(geometry, material);
 
+  // Track current texture for proper disposal
+  let currentTexture = texture;
+  // Keep reference to the original static texture for fallback
+  const staticTexture = texture;
+
   return {
     object3D,
 
     /** Cloud rotation as UV offset — read by earth for shadow sync. */
     get cloudUVOffset() {
       return object3D.rotation.y / (Math.PI * 2);
+    },
+
+    /**
+     * Replace the cloud texture with a new one (e.g. weather-generated).
+     * Properly disposes the old texture unless it's the original static one.
+     * @param {import('three').Texture} newTexture
+     */
+    setCloudTexture(newTexture) {
+      const old = currentTexture;
+      material.uniforms.cloudTexture.value = newTexture;
+      currentTexture = newTexture;
+      // Don't dispose the static fallback — we may need it later
+      if (old !== staticTexture && old !== newTexture) {
+        old.dispose();
+      }
+    },
+
+    /**
+     * Revert to the original static cloud texture.
+     */
+    resetToStaticTexture() {
+      if (currentTexture !== staticTexture) {
+        const old = currentTexture;
+        material.uniforms.cloudTexture.value = staticTexture;
+        currentTexture = staticTexture;
+        old.dispose();
+      }
     },
 
     /** @param {import('./types.js').FrameContext} ctx */
@@ -57,7 +89,8 @@ export function createClouds({ config, textureConfig, earthRadius, cameraPositio
     dispose() {
       geometry.dispose();
       material.dispose();
-      texture.dispose();
+      if (currentTexture !== staticTexture) currentTexture.dispose();
+      staticTexture.dispose();
     },
   };
 }
