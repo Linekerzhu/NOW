@@ -1,7 +1,5 @@
 node_modules/
 dist/
 
-# Large texture source files (use tiles instead)
+# Large texture source file (tiles are used instead)
 public/textures/earth-day-16k.jpg
-public/textures/earth-night-8k.jpg
-public/textures/earth-topo-5400x2700.jpg
