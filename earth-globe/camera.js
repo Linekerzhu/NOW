@@ -48,10 +48,10 @@ export const LEVEL_ORBITS = {
   },
   L3: {
     longitude: 121.34,
-    elevation: 50,
-    distance: 12.5,
+    elevation: 46.7,
+    distance: 13,
     focalLength: 250,
-    latitudeOffset: -4.5,
+    latitudeOffset: -4,
     autoRotate: false,
     autoRotateSpeed: 0.1,
     label: '此刻金山',

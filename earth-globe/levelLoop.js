@@ -24,6 +24,9 @@ let abortController = null;
 // Earth object for regional texture control
 let earthObj = null;
 
+// Tracked region opacity tweens (for abort cleanup)
+let regionTweens = [];
+
 // Regional overlay config per level
 const LEVEL_REGIONS = {
   L1: { r1: 0, r2: 0 },      // no overlays
@@ -118,12 +121,18 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
       // 3b. Activate regional overlay textures
       const regions = LEVEL_REGIONS[level];
       if (earthObj && regions) {
-        gsap.to(earthObj.material.uniforms.regionOpacity1, {
-          value: regions.r1, duration: 1.5, ease: 'power2.out',
-        });
-        gsap.to(earthObj.material.uniforms.regionOpacity2, {
-          value: regions.r2, duration: 1.5, ease: 'power2.out',
-        });
+        // Kill any previous region tweens
+        regionTweens.forEach((tw) => tw.kill());
+        regionTweens = [
+          gsap.to({ v: earthObj.material.uniforms.regionOpacity1.value }, {
+            v: regions.r1, duration: 1.5, ease: 'power2.out',
+            onUpdate() { earthObj.setRegionOpacity(1, this.targets()[0].v); },
+          }),
+          gsap.to({ v: earthObj.material.uniforms.regionOpacity2.value }, {
+            v: regions.r2, duration: 1.5, ease: 'power2.out',
+            onUpdate() { earthObj.setRegionOpacity(2, this.targets()[0].v); },
+          }),
+        ];
       }
 
       // 4. Settle pause
@@ -145,12 +154,17 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
       }
       // Fade out regional overlays
       if (earthObj && regions) {
-        gsap.to(earthObj.material.uniforms.regionOpacity1, {
-          value: 0, duration: 0.8, ease: 'power2.in',
-        });
-        gsap.to(earthObj.material.uniforms.regionOpacity2, {
-          value: 0, duration: 0.8, ease: 'power2.in',
-        });
+        regionTweens.forEach((tw) => tw.kill());
+        regionTweens = [
+          gsap.to({ v: earthObj.material.uniforms.regionOpacity1.value }, {
+            v: 0, duration: 0.8, ease: 'power2.in',
+            onUpdate() { earthObj.setRegionOpacity(1, this.targets()[0].v); },
+          }),
+          gsap.to({ v: earthObj.material.uniforms.regionOpacity2.value }, {
+            v: 0, duration: 0.8, ease: 'power2.in',
+            onUpdate() { earthObj.setRegionOpacity(2, this.targets()[0].v); },
+          }),
+        ];
       }
       if (bKey && boundaryLines[bKey]) {
         await delay(600, signal);
@@ -164,9 +178,9 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
           }
         }
         // Kill any in-flight region opacity tweens and reset to 0
+        regionTweens.forEach((tw) => tw.kill());
+        regionTweens = [];
         if (earthObj) {
-          gsap.killTweensOf(earthObj.material.uniforms.regionOpacity1);
-          gsap.killTweensOf(earthObj.material.uniforms.regionOpacity2);
           earthObj.setRegionOpacity(1, 0);
           earthObj.setRegionOpacity(2, 0);
         }
