@@ -123,6 +123,7 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
       if (earthObj && regions) {
         // Kill any previous region tweens
         regionTweens.forEach((tw) => tw.kill());
+
         regionTweens = [
           gsap.to({ v: earthObj.material.uniforms.regionOpacity1.value }, {
             v: regions.r1, duration: 1.5, ease: 'power2.out',

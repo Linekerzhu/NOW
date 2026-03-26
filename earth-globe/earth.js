@@ -144,9 +144,9 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
         tex.magFilter = THREE.LinearFilter;
         tex.wrapS = THREE.ClampToEdgeWrapping;
         tex.wrapT = THREE.ClampToEdgeWrapping;
-        // Dispose old placeholder and assign new texture
-        const oldTex = material.uniforms[uniformKey].value;
-        if (oldTex) oldTex.dispose();
+        // Replace placeholder — do NOT dispose it here, as the GPU
+        // texture unit may still be referenced by the shader this frame.
+        // The tiny 4x4 placeholder will be GC'd naturally.
         material.uniforms[uniformKey].value = tex;
         console.info(`[Earth] Regional texture loaded: ${url} (${tex.image.width}×${tex.image.height})`);
       },
