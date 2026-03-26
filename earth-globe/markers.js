@@ -1,14 +1,20 @@
 import * as THREE from 'three';
 import { geoToSphere, getSurfaceNormal } from './geo.js';
 
-/** 标注杆高度（球面法线方向延伸） */
-const STALK_HEIGHT = 1.2;
+/** Base reference focal length (L1 level) */
+const BASE_FOCAL_LENGTH = 37;
 
-/** 锚点尺寸 */
-const ANCHOR_SIZE = 0.06;
+/** Base stalk height at reference focal length */
+const BASE_STALK_HEIGHT = 1.2;
 
-/** 标注杆颜色 */
-const MARKER_COLOR = 0x00dd00;
+/** Base anchor size at reference focal length */
+const BASE_ANCHOR_SIZE = 0.06;
+
+/** Default marker color (normal priority) */
+const COLOR_NORMAL = 0x00dd00;
+
+/** High priority marker color */
+const COLOR_HIGH = 0xff3300;
 
 /**
  * 创建球面锚点 + 标注杆，加为 earthGroup 的子对象。
@@ -16,6 +22,7 @@ const MARKER_COLOR = 0x00dd00;
  * @param {number} lat - 纬度
  * @param {number} lon - 经度
  * @param {THREE.Group} earthGroup - M1 地球 Group
+ * @param {{ focalLength?: number, priority?: string }} [options]
  * @returns {{
  *   anchor: THREE.Mesh,
  *   stalk: THREE.Line,
@@ -25,31 +32,38 @@ const MARKER_COLOR = 0x00dd00;
  *   dispose: () => void,
  * }}
  */
-export function createMarker(lat, lon, earthGroup) {
+export function createMarker(lat, lon, earthGroup, options = {}) {
+  const focalLength = options.focalLength ?? BASE_FOCAL_LENGTH;
+  const priority = options.priority ?? 'normal';
+
+  // Scale inversely with focal length so markers stay visually consistent
+  const scale = BASE_FOCAL_LENGTH / focalLength;
+  const stalkHeight = BASE_STALK_HEIGHT * scale;
+  const anchorSize = BASE_ANCHOR_SIZE * scale;
+  const markerColor = priority === 'high' ? COLOR_HIGH : COLOR_NORMAL;
+
   const surfacePos = geoToSphere(lat, lon);
   const normal = getSurfaceNormal(lat, lon);
   const topPosition = surfacePos
     .clone()
-    .add(normal.clone().multiplyScalar(STALK_HEIGHT));
+    .add(normal.clone().multiplyScalar(stalkHeight));
 
-  // --- 锚点：绿色小方块 ---
-  const anchorGeo = new THREE.BoxGeometry(ANCHOR_SIZE, ANCHOR_SIZE, ANCHOR_SIZE);
+  // --- 锚点 ---
+  const anchorGeo = new THREE.BoxGeometry(anchorSize, anchorSize, anchorSize);
   const anchorMat = new THREE.MeshBasicMaterial({
-    color: MARKER_COLOR,
+    color: markerColor,
     transparent: true,
     opacity: 0,
     depthTest: false,
   });
   const anchor = new THREE.Mesh(anchorGeo, anchorMat);
   anchor.position.copy(surfacePos);
-  // 使方块面向球面外侧
   anchor.lookAt(surfacePos.clone().add(normal));
   anchor.renderOrder = 999;
 
-  // --- 标注杆：绿色细线 ---
+  // --- 标注杆 ---
   const stalkGeo = new THREE.BufferGeometry();
-  const positions = new Float32Array(6); // 2 vertices × 3 components
-  // 初始化两端重合在球面点（杆长度为 0）
+  const positions = new Float32Array(6);
   positions[0] = surfacePos.x;
   positions[1] = surfacePos.y;
   positions[2] = surfacePos.z;
@@ -59,7 +73,7 @@ export function createMarker(lat, lon, earthGroup) {
   stalkGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
   const stalkMat = new THREE.LineBasicMaterial({
-    color: MARKER_COLOR,
+    color: markerColor,
     transparent: true,
     opacity: 0.6,
     depthTest: false,
@@ -68,7 +82,6 @@ export function createMarker(lat, lon, earthGroup) {
   stalk.renderOrder = 998;
   stalk.visible = false;
 
-  // 加入 earthGroup（随地球旋转）
   earthGroup.add(anchor);
   earthGroup.add(stalk);
 
@@ -91,23 +104,16 @@ export function createMarker(lat, lon, earthGroup) {
 
 /**
  * 更新标注杆生长进度。
- *
- * @param {THREE.Line} stalk
- * @param {THREE.Vector3} surfacePos - 球面起点（局部坐标）
- * @param {THREE.Vector3} topPos - 标注杆终点（局部坐标）
- * @param {number} progress - 0~1
  */
 export function updateStalkGrowth(stalk, surfacePos, topPos, progress) {
   const positions = stalk.geometry.attributes.position.array;
-  // 起点不变
   positions[0] = surfacePos.x;
   positions[1] = surfacePos.y;
   positions[2] = surfacePos.z;
-  // 终点沿法线方向插值
   positions[3] = surfacePos.x + (topPos.x - surfacePos.x) * progress;
   positions[4] = surfacePos.y + (topPos.y - surfacePos.y) * progress;
   positions[5] = surfacePos.z + (topPos.z - surfacePos.z) * progress;
   stalk.geometry.attributes.position.needsUpdate = true;
 }
 
-export { STALK_HEIGHT };
+export { BASE_STALK_HEIGHT as STALK_HEIGHT };

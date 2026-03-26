@@ -69,6 +69,8 @@ export function setupLevelButtons(levelConfigs, onSwitch) {
     btn.className = 'level-btn';
     btn.dataset.level = level;
     btn.textContent = `> ${config.label}`;
+    btn.setAttribute('aria-label', `切换到${config.label}`);
+    btn.setAttribute('aria-pressed', 'false');
     btn.addEventListener('click', () => {
       onSwitch(level);
     });
@@ -114,7 +116,9 @@ export function updateHUDLevel(level, config) {
   if (elSwitcher) {
     const btns = elSwitcher.querySelectorAll('.level-btn');
     btns.forEach((btn) => {
-      btn.classList.toggle('level-btn--active', btn.dataset.level === level);
+      const isActive = btn.dataset.level === level;
+      btn.classList.toggle('level-btn--active', isActive);
+      btn.setAttribute('aria-pressed', String(isActive));
     });
   }
 }

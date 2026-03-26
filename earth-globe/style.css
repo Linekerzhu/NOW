@@ -272,6 +272,11 @@ canvas {
   color: var(--color-primary);
 }
 
+.level-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Kiosk mode: hide level switcher */
 body.kiosk #level-switcher {
   display: none;

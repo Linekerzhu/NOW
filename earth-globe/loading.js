@@ -7,10 +7,13 @@ import { CONFIG } from './config.js';
 
 const overlay = document.createElement('div');
 overlay.id = 'loading-overlay';
+overlay.setAttribute('role', 'status');
+overlay.setAttribute('aria-live', 'polite');
+overlay.setAttribute('aria-label', '加载中');
 overlay.innerHTML = `
   <div class="loading-text">
     <span>Loading Earth…</span>
-    <span id="loading-progress">0%</span>
+    <span id="loading-progress" aria-live="polite">0%</span>
   </div>`;
 
 /** Show the loading overlay (adds to DOM). */
