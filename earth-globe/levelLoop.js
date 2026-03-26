@@ -133,7 +133,7 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
 
       // 5. Show news items one by one
       if (items.length > 0) {
-        await showNewsSequence(items, earthGroup, camera, canvas, { focalLength: config.focalLength });
+        await showNewsSequence(items, earthGroup, camera, canvas, { focalLength: config.focalLength, signal });
       } else {
         await delay(10000, signal);
       }

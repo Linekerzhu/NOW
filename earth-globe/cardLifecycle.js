@@ -40,7 +40,7 @@ const _tmpWorldPos = new THREE.Vector3();
  * @returns {Promise<void>} 动画完成后 resolve
  */
 export function showNewsItem(newsItem, earthGroup, camera, canvas, options = {}) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     // --- 字段兼容 ---
     const lat = newsItem.lat ?? newsItem.latitude;
     const lon = newsItem.lon ?? newsItem.longitude;
@@ -78,14 +78,33 @@ export function showNewsItem(newsItem, earthGroup, camera, canvas, options = {})
     // 注册 GSAP ticker
     gsap.ticker.add(onTick);
 
+    // --- 清理函数 ---
+    function cleanup() {
+      gsap.ticker.remove(onTick);
+      removeInfoCard(card);
+      marker.dispose();
+    }
+
+    // --- Abort 支持 ---
+    const signal = options.signal;
+    if (signal) {
+      if (signal.aborted) {
+        cleanup();
+        reject(new DOMException('Aborted', 'AbortError'));
+        return;
+      }
+      signal.addEventListener('abort', () => {
+        tl.kill();
+        cleanup();
+        reject(new DOMException('Aborted', 'AbortError'));
+      }, { once: true });
+    }
+
     // --- GSAP Timeline ---
     const dwellTime = calcDwellTime(newsItem.title, newsItem.summary);
     const tl = gsap.timeline({
       onComplete() {
-        // 清理
-        gsap.ticker.remove(onTick);
-        removeInfoCard(card);
-        marker.dispose();
+        cleanup();
         resolve();
       },
     });
@@ -164,10 +183,25 @@ export async function showNewsSequence(
   options = {},
 ) {
   const breathInterval = options.breathInterval ?? 1.5;
+  const signal = options.signal;
 
   for (const item of newsItems) {
-    await showNewsItem(item, earthGroup, camera, canvas, { focalLength: options.focalLength });
-    // 呼吸间隔
-    await new Promise((r) => setTimeout(r, breathInterval * 1000));
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    await showNewsItem(item, earthGroup, camera, canvas, {
+      focalLength: options.focalLength,
+      signal,
+    });
+    // 呼吸间隔（可中断）
+    if (signal) {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(resolve, breathInterval * 1000);
+        signal.addEventListener('abort', () => {
+          clearTimeout(timer);
+          reject(new DOMException('Aborted', 'AbortError'));
+        }, { once: true });
+      });
+    } else {
+      await new Promise((r) => setTimeout(r, breathInterval * 1000));
+    }
   }
 }
