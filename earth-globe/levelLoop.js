@@ -92,6 +92,14 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
       // 1. Update HUD
       updateHUDLevel(level, config);
 
+      // Update overlay container level class for card sizing
+      const overlayEl = document.getElementById('overlay');
+      if (overlayEl) {
+        overlayEl.className = '';
+        overlayEl.classList.add(`level-${level}`);
+        overlayEl.id = 'overlay';
+      }
+
       // 2. Fly to level (skip on very first iteration — already at starting position)
       if (!isFirstRun) {
         await flyToLevel(level, camera, controls, bloomPass, animState);

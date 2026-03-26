@@ -40,6 +40,23 @@
   --card-padding-h: 16px;
 }
 
+/* Level-specific card sizing */
+.level-L2 {
+  --card-max-width: 240px;
+  --card-title-size: 18px;
+  --card-body-size: 15px;
+  --card-padding-v: 8px;
+  --card-padding-h: 12px;
+}
+
+.level-L3 {
+  --card-max-width: 180px;
+  --card-title-size: 14px;
+  --card-body-size: 12px;
+  --card-padding-v: 6px;
+  --card-padding-h: 10px;
+}
+
 * {
   margin: 0;
   padding: 0;
