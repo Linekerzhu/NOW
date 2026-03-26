@@ -137,12 +137,12 @@ canvas {
 @font-face {
   font-family: 'Fusion Pixel 12';
   src: url('/fonts/fusion-pixel-12px-monospaced-zh_hans.woff2') format('woff2');
-  font-display: swap;
+  font-display: optional;
 }
 @font-face {
   font-family: 'Fusion Pixel 10';
   src: url('/fonts/fusion-pixel-10px-monospaced-zh_hans.woff2') format('woff2');
-  font-display: swap;
+  font-display: optional;
 }
 
 /* ===== M2: Overlay container ===== */
