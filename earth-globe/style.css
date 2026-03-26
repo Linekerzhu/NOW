@@ -280,6 +280,7 @@ canvas {
   cursor: pointer;
   -webkit-font-smoothing: none;
   transition: border-color 0.2s, color 0.2s;
+  min-height: 44px;
 }
 
 .level-btn:hover {
@@ -295,6 +296,47 @@ canvas {
 .level-btn:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  :root {
+    --font-size-xl: 24px;
+    --font-size-lg: 18px;
+    --font-size-md: 16px;
+    --space-xl: 16px;
+    --space-2xl: 20px;
+    --card-max-width: 260px;
+    --card-title-size: 20px;
+    --card-body-size: 16px;
+  }
+
+  .level-btn {
+    padding: var(--space-md) var(--space-xl);
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --font-size-xl: 20px;
+    --font-size-lg: 16px;
+    --font-size-md: 14px;
+    --space-xl: 12px;
+    --space-2xl: 16px;
+    --card-max-width: 200px;
+    --card-title-size: 16px;
+    --card-body-size: 14px;
+  }
+
+  #level-switcher {
+    flex-direction: column;
+    bottom: var(--space-md);
+    right: var(--space-md);
+    left: auto;
+    transform: none;
+  }
 }
 
 /* Kiosk mode: hide level switcher */
