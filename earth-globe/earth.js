@@ -128,27 +128,34 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
 
   const object3D = new THREE.Mesh(geometry, material);
 
-  // --- Async load regional imagery into existing CanvasTextures ---
-  // This updates the GPU texture IN-PLACE on the same texture unit,
-  // avoiding the texture unit cross-contamination discovered during debugging.
-  function loadRegionalImage(url, canvasTex) {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = canvasTex.image; // the canvas element
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      canvasTex.needsUpdate = true;
-      console.info(`[Earth] Regional texture updated: ${url} (${img.width}×${img.height})`);
-    };
-    img.onerror = () => console.error(`[Earth] Failed to load: ${url}`);
-    img.src = url;
+  // --- Async load regional imagery ---
+  // Replace placeholder textures with loaded images via TextureLoader.
+  // The original in-place canvas resize approach caused WebGL errors
+  // (glCopySubTextureCHROMIUM overflow) because GPU texture stayed at 4x4.
+  const texLoader = new THREE.TextureLoader();
+  function loadRegionalImage(url, uniformKey) {
+    texLoader.load(
+      url,
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.generateMipmaps = false;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        // Dispose old placeholder and assign new texture
+        const oldTex = material.uniforms[uniformKey].value;
+        if (oldTex) oldTex.dispose();
+        material.uniforms[uniformKey].value = tex;
+        console.info(`[Earth] Regional texture loaded: ${url} (${tex.image.width}×${tex.image.height})`);
+      },
+      undefined,
+      () => console.error(`[Earth] Failed to load: ${url}`),
+    );
   }
 
-  loadRegionalImage('/textures/regional/shanghai-day.jpg', shanghaiDayTex);
-  loadRegionalImage('/textures/regional/jinshan-day.jpg', jinshanDayTex);
+  loadRegionalImage('/textures/regional/shanghai-day.jpg', 'regionDayTex1');
+  loadRegionalImage('/textures/regional/jinshan-day.jpg', 'regionDayTex2');
   return {
     object3D,
 
