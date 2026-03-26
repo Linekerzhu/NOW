@@ -17,13 +17,58 @@ uniform float blueHourIntensity;
 uniform float nightBrightness;
 uniform float cityLightBoost;
 
+// --- Regional LOD overlays ---
+uniform sampler2D regionDayTex1;       // Shanghai high-res day
+uniform sampler2D regionDayTex2;       // Jinshan high-res day
+uniform vec4 regionBounds1;            // Shanghai: vec4(u_min, v_min, u_max, v_max)
+uniform vec4 regionBounds2;            // Jinshan: vec4(u_min, v_min, u_max, v_max)
+uniform float regionOpacity1;          // 0.0 = disabled, 1.0 = full overlay
+uniform float regionOpacity2;
+
 varying vec3 vNormal;
 varying vec2 vUv;
 varying vec3 vWorldPosition;
 varying vec3 vTangent;
 varying vec3 vBitangent;
 
+/**
+ * Sample a regional overlay texture with edge feathering.
+ * Always performs the texture lookup (GPU requires uniform flow for samplers).
+ * Returns vec4(color, blendWeight).
+ */
+vec4 sampleRegion(sampler2D regionTex, vec4 bounds, float opacity, vec2 uv) {
+  // Remap UV to [0,1] within the regional bounds (always compute, even if outside)
+  vec2 regionUV = clamp((uv - bounds.xy) / (bounds.zw - bounds.xy), 0.0, 1.0);
+
+  // Always sample the texture (GPU requires this outside conditionals)
+  vec3 color = texture2D(regionTex, regionUV).rgb;
+
+  // Check if UV is within bounds
+  float inU = step(bounds.x, uv.x) * step(uv.x, bounds.z);
+  float inV = step(bounds.y, uv.y) * step(uv.y, bounds.w);
+  float inside = inU * inV;
+
+  // Edge feathering: 8% of each edge fades smoothly
+  float feather = 0.08;
+  float fadeL = smoothstep(0.0, feather, regionUV.x);
+  float fadeR = smoothstep(0.0, feather, 1.0 - regionUV.x);
+  float fadeT = smoothstep(0.0, feather, regionUV.y);
+  float fadeB = smoothstep(0.0, feather, 1.0 - regionUV.y);
+  float edgeFade = fadeL * fadeR * fadeT * fadeB;
+
+  float weight = inside * edgeFade * opacity;
+  return vec4(color, weight);
+}
+
 void main() {
+  // Force ALL sampler2D uniforms to be "alive" to prevent GLSL dead-code
+  // elimination, which would cause Three.js to not assign texture units.
+  // The 0.0001 factor makes the contribution invisible but the compiler
+  // cannot prove it's zero (it depends on texture content).
+  float _keepAlive = 0.0;
+  _keepAlive += texture2D(regionDayTex1, vec2(0.5)).r * 0.0001;
+  _keepAlive += texture2D(regionDayTex2, vec2(0.5)).r * 0.0001;
+
   vec3 N = normalize(vNormal);
   vec3 T = normalize(vTangent);
   vec3 B = normalize(vBitangent);
@@ -41,6 +86,16 @@ void main() {
   // --- Sample textures ---
   vec3 dayColor = texture2D(dayTexture, vUv).rgb;
   vec3 nightColor = texture2D(nightTexture, vUv).rgb;
+
+  // --- Regional LOD overlay (day only) ---
+  vec4 r1 = sampleRegion(regionDayTex1, regionBounds1, regionOpacity1, vUv);
+  if (r1.a > 0.01) {
+    dayColor = mix(dayColor, r1.rgb, r1.a);
+  }
+  vec4 r2 = sampleRegion(regionDayTex2, regionBounds2, regionOpacity2, vUv);
+  if (r2.a > 0.01) {
+    dayColor = mix(dayColor, r2.rgb, r2.a);
+  }
 
   // --- Boost city lights with gradual transition ---
   float cityBrightness = max(nightColor.r, max(nightColor.g, nightColor.b));
@@ -142,5 +197,5 @@ void main() {
   color *= dimFactor;
   color = mix(color, color * vec3(0.93, 0.96, 1.0), terminator * 0.2);
 
-  gl_FragColor = vec4(color, 1.0);
+  gl_FragColor = vec4(color + _keepAlive, 1.0);
 }

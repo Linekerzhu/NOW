@@ -56,6 +56,45 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
   const [segW, segH] = config.segments;
   const geometry = new THREE.SphereGeometry(earthRadius, segW, segH);
 
+  // --- Regional LOD overlay textures ---
+  // Pre-create textures with a small canvas placeholder (NOT a white pixel)
+  // This ensures Three.js assigns a unique texture unit for each sampler
+  function createRegionalTexPlaceholder() {
+    const c = document.createElement('canvas');
+    c.width = 4; c.height = 4;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 4, 4);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+  }
+
+  const shanghaiDayTex = createRegionalTexPlaceholder();
+  const jinshanDayTex = createRegionalTexPlaceholder();
+
+  // UV bounds: vec4(u_min, v_min, u_max, v_max)
+  // UV formula: u = (lon + 180) / 360, v = (90 - lat) / 180
+  // Shanghai WMS BBOX: 119°-123°E, 29°-33°N
+  const shanghaiUVBounds = new THREE.Vector4(
+    (119 + 180) / 360,   // u_min = 0.83056
+    (90 - 33) / 180,     // v_min = 0.31667 (north edge → smaller v)
+    (123 + 180) / 360,   // u_max = 0.84167
+    (90 - 29) / 180,     // v_max = 0.33889 (south edge → larger v)
+  );
+  // Jinshan WMS BBOX: 120.8°-121.8°E, 30.4°-31.4°N
+  const jinshanUVBounds = new THREE.Vector4(
+    (120.8 + 180) / 360, // u_min = 0.83556
+    (90 - 31.4) / 180,   // v_min = 0.32556
+    (121.8 + 180) / 360, // u_max = 0.83833
+    (90 - 30.4) / 180,   // v_max = 0.33111
+  );
+
   const material = new THREE.ShaderMaterial({
     vertexShader,
     fragmentShader,
@@ -77,19 +116,60 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
       blueHourIntensity: { value: sc.blueHourIntensity ?? 0.16 },
       nightBrightness: { value: sc.nightBrightness ?? 0.53 },
       cityLightBoost: { value: sc.cityLightBoost ?? 0.75 },
+      // Regional LOD overlays
+      regionDayTex1: { value: shanghaiDayTex },
+      regionDayTex2: { value: jinshanDayTex },
+      regionBounds1: { value: shanghaiUVBounds },
+      regionBounds2: { value: jinshanUVBounds },
+      regionOpacity1: { value: 0.0 },
+      regionOpacity2: { value: 0.0 },
     },
   });
 
   const object3D = new THREE.Mesh(geometry, material);
 
+  // --- Async load regional imagery into existing CanvasTextures ---
+  // This updates the GPU texture IN-PLACE on the same texture unit,
+  // avoiding the texture unit cross-contamination discovered during debugging.
+  function loadRegionalImage(url, canvasTex) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = canvasTex.image; // the canvas element
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      canvasTex.needsUpdate = true;
+      console.info(`[Earth] Regional texture updated: ${url} (${img.width}×${img.height})`);
+    };
+    img.onerror = () => console.error(`[Earth] Failed to load: ${url}`);
+    img.src = url;
+  }
+
+  loadRegionalImage('/textures/regional/shanghai-day.jpg', shanghaiDayTex);
+  loadRegionalImage('/textures/regional/jinshan-day.jpg', jinshanDayTex);
   return {
     object3D,
+
+    /** Access material for external uniform control */
+    material,
 
     update(ctx) {
       material.uniforms.sunDirection.value.copy(ctx.sunDirection);
       material.uniforms.sunIntensity.value = ctx.sunIntensity;
       material.uniforms.cloudUVOffset.value = ctx.cloudUVOffset;
       material.uniforms.time.value = ctx.time;
+    },
+
+    /**
+     * Set regional overlay opacity.
+     * @param {number} region - 1 (Shanghai) or 2 (Jinshan)
+     * @param {number} opacity - 0.0 to 1.0
+     */
+    setRegionOpacity(region, opacity) {
+      const key = region === 1 ? 'regionOpacity1' : 'regionOpacity2';
+      material.uniforms[key].value = opacity;
     },
 
     dispose() {
@@ -100,6 +180,8 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
       nightTex.dispose();
       normalTex.dispose();
       heightTex.dispose();
+      shanghaiDayTex.dispose();
+      jinshanDayTex.dispose();
       // cloudTex is NOT disposed here — it shares the same GPU texture
       // with clouds.js via Three.js TextureLoader URL cache.
       // Ownership belongs to clouds.js which disposes it.

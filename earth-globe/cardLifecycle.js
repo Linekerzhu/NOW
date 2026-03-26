@@ -29,7 +29,11 @@ const _tmpWorldPos = new THREE.Vector3();
 /**
  * 展示单条信息的完整生命周期。
  *
- * @param {{ lat: number, lon: number, title: string, summary: string, source: string, time: string, priority?: string }} newsItem
+ * 兼容两种字段格式：
+ *   M2: { lat, lon, title, summary, source, time, priority }
+ *   M3: { latitude, longitude, title, summary, source, timestamp, priority }
+ *
+ * @param {object} newsItem
  * @param {THREE.Group} earthGroup
  * @param {THREE.Camera} camera
  * @param {HTMLCanvasElement} canvas
@@ -37,12 +41,20 @@ const _tmpWorldPos = new THREE.Vector3();
  */
 export function showNewsItem(newsItem, earthGroup, camera, canvas) {
   return new Promise((resolve) => {
+    // --- 字段兼容 ---
+    const lat = newsItem.lat ?? newsItem.latitude;
+    const lon = newsItem.lon ?? newsItem.longitude;
+    const time = newsItem.time ?? (newsItem.timestamp
+      ? new Date(newsItem.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+      : '');
+    const normalizedItem = { ...newsItem, lat, lon, time };
+
     // --- 创建 3D 标注物 ---
-    const marker = createMarker(newsItem.lat, newsItem.lon, earthGroup);
+    const marker = createMarker(lat, lon, earthGroup);
     const { anchor, stalk, surfacePos, topPosition } = marker;
 
     // --- 创建 DOM 卡片 ---
-    const card = createInfoCard(newsItem);
+    const card = createInfoCard(normalizedItem);
 
     // --- 每帧位置更新 ---
     const stalkProgress = { value: 0 };

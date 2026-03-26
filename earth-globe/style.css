@@ -147,3 +147,90 @@ canvas {
 .info-card--high .info-card__title::before {
   color: #991100;
 }
+
+/* ===== HUD ===== */
+#hud {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 24px 32px;
+  pointer-events: none;
+  z-index: 20;
+  font-family: 'Fusion Pixel 12', monospace;
+  -webkit-font-smoothing: none;
+}
+
+#hud-level-name {
+  color: #00dd00;
+  font-size: 36px;
+  letter-spacing: 3px;
+}
+
+#hud-level-en {
+  color: #006600;
+  font-family: 'Fusion Pixel 10', monospace;
+  font-size: 20px;
+  letter-spacing: 4px;
+  margin-top: 4px;
+}
+
+#hud-date {
+  color: #006600;
+  font-family: 'Fusion Pixel 10', monospace;
+  font-size: 20px;
+  text-align: right;
+}
+
+#hud-time {
+  color: #00bb00;
+  font-size: 24px;
+  text-align: right;
+}
+
+#hud-indicators {
+  color: #00aa00;
+  font-size: 24px;
+  text-align: right;
+  margin-top: 4px;
+  letter-spacing: 2px;
+}
+
+/* ===== Level Switcher (desktop) ===== */
+#level-switcher {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  z-index: 20;
+}
+
+.level-btn {
+  background: rgba(0, 8, 0, 0.75);
+  border: 1px solid rgba(0, 255, 0, 0.12);
+  border-radius: 0;
+  color: #006600;
+  font-family: 'Fusion Pixel 10', monospace;
+  font-size: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+  -webkit-font-smoothing: none;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.level-btn:hover {
+  border-color: rgba(0, 255, 0, 0.3);
+  color: #00aa00;
+}
+
+.level-btn--active {
+  border-color: rgba(0, 255, 0, 0.3);
+  color: #00dd00;
+}
+
+/* Kiosk mode: hide level switcher */
+body.kiosk #level-switcher {
+  display: none;
+}

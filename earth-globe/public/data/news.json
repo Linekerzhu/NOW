@@ -1,0 +1,156 @@
+{
+  "version": "1.0",
+  "generated_at": "2026-03-25T10:00:00+08:00",
+  "data": {
+    "L1": [
+      {
+        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "level": "L1",
+        "title": "国家电网发布新型电力系统行动方案",
+        "summary": "方案提出到2030年建成以新能源为主体的新型电力系统，加快构建新型配电网络。",
+        "source": "国网官网",
+        "timestamp": "2026-03-25T09:30:00+08:00",
+        "latitude": 39.9042,
+        "longitude": 116.3974,
+        "category": "政策",
+        "priority": "normal"
+      },
+      {
+        "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+        "level": "L1",
+        "title": "特高压白鹤滩至江苏工程全线贯通",
+        "summary": "该工程全长2080公里，是世界首个混合级联特高压直流输电工程。",
+        "source": "新华社",
+        "timestamp": "2026-03-25T10:00:00+08:00",
+        "latitude": 27.00,
+        "longitude": 103.00,
+        "category": "项目",
+        "priority": "high"
+      },
+      {
+        "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+        "level": "L1",
+        "title": "国网公司召开安全生产工作会议",
+        "summary": "会议部署2026年度安全生产重点工作，强调本质安全和数字化转型。",
+        "source": "国网办公厅",
+        "timestamp": "2026-03-25T11:00:00+08:00",
+        "latitude": 39.9042,
+        "longitude": 116.3974,
+        "category": "安全",
+        "priority": "normal"
+      },
+      {
+        "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+        "level": "L1",
+        "title": "西北新能源消纳率创历史新高",
+        "summary": "一季度西北五省新能源消纳率达97.8%，弃电率同比下降1.2个百分点。",
+        "source": "西北能监局",
+        "timestamp": "2026-03-25T14:30:00+08:00",
+        "latitude": 34.26,
+        "longitude": 108.94,
+        "category": "科技",
+        "priority": "normal"
+      },
+      {
+        "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+        "level": "L1",
+        "title": "南方电网与国网签署互联互通协议",
+        "summary": "双方将加强跨区电力互济和新能源消纳合作，推动全国统一电力市场。",
+        "source": "中国电力报",
+        "timestamp": "2026-03-25T16:00:00+08:00",
+        "latitude": 23.13,
+        "longitude": 113.26,
+        "category": "政策",
+        "priority": "normal"
+      }
+    ],
+    "L2": [
+      {
+        "id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+        "level": "L2",
+        "title": "上海电力完成迎峰度夏保供部署",
+        "summary": "预计今夏最大负荷3800万千瓦，同比增长5%，保供方案已全面落实。",
+        "source": "上海电力",
+        "timestamp": "2026-03-25T09:00:00+08:00",
+        "latitude": 31.24,
+        "longitude": 121.54,
+        "category": "安全",
+        "priority": "normal"
+      },
+      {
+        "id": "a7b8c9d0-e1f2-3456-abcd-567890123456",
+        "level": "L2",
+        "title": "临港新型储能电站投入运行",
+        "summary": "电站采用磷酸铁锂电池，总容量200MWh，可满足临港片区2小时用电。",
+        "source": "临港管委会",
+        "timestamp": "2026-03-25T10:30:00+08:00",
+        "latitude": 30.89,
+        "longitude": 121.93,
+        "category": "项目",
+        "priority": "high"
+      },
+      {
+        "id": "b8c9d0e1-f2a3-4567-bcde-678901234567",
+        "level": "L2",
+        "title": "崇明岛海上风电二期并网发电",
+        "summary": "装机容量50万千瓦，年发电量约12亿千瓦时，可满足80万户家庭用电。",
+        "source": "华东能监局",
+        "timestamp": "2026-03-25T11:30:00+08:00",
+        "latitude": 31.63,
+        "longitude": 121.40,
+        "category": "项目",
+        "priority": "normal"
+      },
+      {
+        "id": "c9d0e1f2-a3b4-5678-cdef-789012345678",
+        "level": "L2",
+        "title": "世博区域智慧电网改造完成",
+        "summary": "采用数字孪生技术实现配电网全息感知，故障自愈时间缩短至秒级。",
+        "source": "浦东供电",
+        "timestamp": "2026-03-25T14:00:00+08:00",
+        "latitude": 31.19,
+        "longitude": 121.49,
+        "category": "科技",
+        "priority": "normal"
+      }
+    ],
+    "L3": [
+      {
+        "id": "d0e1f2a3-b4c5-6789-defa-890123456789",
+        "level": "L3",
+        "title": "金山供电完成春季安全大检查",
+        "summary": "累计排查线路隐患127处，完成整改率100%，确保春季用电安全。",
+        "source": "金山供电",
+        "timestamp": "2026-03-25T09:30:00+08:00",
+        "latitude": 30.74,
+        "longitude": 121.34,
+        "category": "安全",
+        "priority": "normal"
+      },
+      {
+        "id": "e1f2a3b4-c5d6-7890-efab-901234567890",
+        "level": "L3",
+        "title": "枫泾古镇线路迁改工程启动",
+        "summary": "将架空线路入地，改善古镇景观风貌，预计6月底完工。",
+        "source": "金山区发改委",
+        "timestamp": "2026-03-25T10:30:00+08:00",
+        "latitude": 30.89,
+        "longitude": 121.00,
+        "category": "项目",
+        "priority": "normal"
+      },
+      {
+        "id": "f2a3b4c5-d6e7-8901-fabc-012345678901",
+        "level": "L3",
+        "title": "金山石化区域供电保障方案发布",
+        "summary": "针对石化园区特殊供电需求，建立三级应急响应机制。",
+        "source": "金山石化管委会",
+        "timestamp": "2026-03-25T15:00:00+08:00",
+        "latitude": 30.73,
+        "longitude": 121.27,
+        "category": "安全",
+        "priority": "high"
+      }
+    ]
+  }
+}
