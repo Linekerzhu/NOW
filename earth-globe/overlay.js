@@ -65,17 +65,14 @@ export function createInfoCard(data) {
  */
 export function updateCardPosition(card, screenPos, visible) {
   if (!visible) {
-    card.style.display = 'none';
+    card.style.visibility = 'hidden';
     return;
   }
 
-  card.style.display = '';
-  // 卡片锚定在标注杆顶端的右上方
+  card.style.visibility = '';
   const offsetX = 12;
   const offsetY = -8;
-  card.style.left = `${screenPos.x + offsetX}px`;
-  card.style.top = `${screenPos.y + offsetY}px`;
-  card.style.transform = 'translateY(-100%)';
+  card.style.transform = `translate3d(${screenPos.x + offsetX}px, ${screenPos.y + offsetY}px, 0) translateY(-100%)`;
 }
 
 /**
