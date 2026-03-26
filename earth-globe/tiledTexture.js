@@ -15,7 +15,7 @@ import * as THREE from 'three';
  * @param {number} opts.tileWidth - pixel width of each tile
  * @param {number} opts.tileHeight - pixel height of each tile
  * @param {string} opts.placeholder - path to the low-res placeholder image
- * @param {number} [opts.maxTextureSize=8192] - GPU max texture dimension
+ * @param {number} [opts.maxTextureSize=16384] - GPU max texture dimension
  * @param {(loaded: number, total: number) => void} [opts.onProgress] - progress callback
  * @returns {{ texture: THREE.CanvasTexture, cancel: () => void }}
  */
@@ -26,15 +26,15 @@ export function createTiledTexture({
   tileWidth,
   tileHeight,
   placeholder,
-  maxTextureSize = 8192,
+  maxTextureSize = 16384,
   onProgress,
 }) {
   const sourceWidth = cols * tileWidth;
   const sourceHeight = rows * tileHeight;
   const totalTiles = cols * rows;
 
-  // Use provided GPU max texture size, capped for safety to avoid
-  // texSubImage2D failures on very large textures (537MB+ per upload).
+  // Cap canvas to GPU max texture size to prevent
+  // Three.js from silently downscaling the entire texture every frame.
   const MAX_TEX = Math.min(maxTextureSize, 16384);
   const scale = Math.min(1, MAX_TEX / Math.max(sourceWidth, sourceHeight));
   const canvasW = Math.round(sourceWidth * scale);
@@ -104,6 +104,10 @@ export function createTiledTexture({
           ctx2d.drawImage(bitmap, dx, dy, drawTileW + 1, drawTileH + 1);
           bitmap.close();
 
+          // Yield to next frame before GPU upload to avoid mid-render artifacts
+          await waitFrame();
+
+          texture.needsUpdate = true;
           tilesLoaded++;
 
           if (onProgress) {
@@ -114,20 +118,6 @@ export function createTiledTexture({
           tilesLoaded++;
           if (onProgress) onProgress(tilesLoaded, totalTiles);
         }
-      }
-    }
-
-    // All tiles loaded — do a single clean GPU upload via ImageBitmap.
-    // This avoids texSubImage2D issues that caused black rectangles when
-    // updating a large CanvasTexture in-place.
-    if (tilesLoaded > 0 && !cancelled) {
-      try {
-        const bitmap = await createImageBitmap(canvas);
-        texture.image = bitmap;
-        texture.needsUpdate = true;
-      } catch {
-        // Fallback: just mark the canvas texture for update
-        texture.needsUpdate = true;
       }
     }
   }

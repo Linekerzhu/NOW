@@ -50,6 +50,15 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
   cloudTex.colorSpace = THREE.LinearSRGBColorSpace;
   heightTex.colorSpace = THREE.LinearSRGBColorSpace;
 
+  // Disable mipmaps on all NPOT (non-power-of-two) textures.
+  // NPOT textures (e.g. night 13500×6750, heightmap 5400×2700) can produce
+  // corrupted mipmap levels on some GPUs, causing black rectangles that
+  // flicker at certain zoom distances when the GPU selects those levels.
+  for (const tex of [nightTex, normalTex, cloudTex, heightTex]) {
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
+  }
+
   const maxAniso = renderer
     ? renderer.capabilities.getMaxAnisotropy()
     : 16;
