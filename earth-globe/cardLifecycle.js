@@ -78,8 +78,11 @@ export function showNewsItem(newsItem, earthGroup, camera, canvas, options = {})
     // 注册 GSAP ticker
     gsap.ticker.add(onTick);
 
-    // --- 清理函数 ---
+    // --- 清理函数（只执行一次） ---
+    let cleaned = false;
     function cleanup() {
+      if (cleaned) return;
+      cleaned = true;
       gsap.ticker.remove(onTick);
       removeInfoCard(card);
       marker.dispose();
@@ -87,23 +90,27 @@ export function showNewsItem(newsItem, earthGroup, camera, canvas, options = {})
 
     // --- Abort 支持 ---
     const signal = options.signal;
+    function onAbort() {
+      tl.kill();
+      cleanup();
+      reject(new DOMException('Aborted', 'AbortError'));
+    }
+
     if (signal) {
       if (signal.aborted) {
         cleanup();
         reject(new DOMException('Aborted', 'AbortError'));
         return;
       }
-      signal.addEventListener('abort', () => {
-        tl.kill();
-        cleanup();
-        reject(new DOMException('Aborted', 'AbortError'));
-      }, { once: true });
+      signal.addEventListener('abort', onAbort, { once: true });
     }
 
     // --- GSAP Timeline ---
     const dwellTime = calcDwellTime(newsItem.title, newsItem.summary);
     const tl = gsap.timeline({
       onComplete() {
+        // Remove abort listener so it doesn't fire on stale resources later
+        if (signal) signal.removeEventListener('abort', onAbort);
         cleanup();
         resolve();
       },
