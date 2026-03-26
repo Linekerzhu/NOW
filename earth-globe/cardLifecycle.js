@@ -39,7 +39,7 @@ const _tmpWorldPos = new THREE.Vector3();
  * @param {HTMLCanvasElement} canvas
  * @returns {Promise<void>} 动画完成后 resolve
  */
-export function showNewsItem(newsItem, earthGroup, camera, canvas) {
+export function showNewsItem(newsItem, earthGroup, camera, canvas, options = {}) {
   return new Promise((resolve) => {
     // --- 字段兼容 ---
     const lat = newsItem.lat ?? newsItem.latitude;
@@ -50,7 +50,7 @@ export function showNewsItem(newsItem, earthGroup, camera, canvas) {
     const normalizedItem = { ...newsItem, lat, lon, time };
 
     // --- 创建 3D 标注物 ---
-    const marker = createMarker(lat, lon, earthGroup);
+    const marker = createMarker(lat, lon, earthGroup, { focalLength: options.focalLength, priority: newsItem.priority });
     const { anchor, stalk, surfacePos, topPosition } = marker;
 
     // --- 创建 DOM 卡片 ---
@@ -166,7 +166,7 @@ export async function showNewsSequence(
   const breathInterval = options.breathInterval ?? 1.5;
 
   for (const item of newsItems) {
-    await showNewsItem(item, earthGroup, camera, canvas);
+    await showNewsItem(item, earthGroup, camera, canvas, { focalLength: options.focalLength });
     // 呼吸间隔
     await new Promise((r) => setTimeout(r, breathInterval * 1000));
   }
