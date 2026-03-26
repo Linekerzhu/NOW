@@ -20,6 +20,9 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
 
   // --- Day texture: tiled progressive loading (16K) with 8K placeholder ---
   const tileConfig = textureConfig.dayTiles;
+  const gpuMaxTex = renderer
+    ? renderer.capabilities.maxTextureSize
+    : 8192;
   const tiledDay = createTiledTexture({
     basePath: tileConfig.basePath,
     cols: tileConfig.cols,
@@ -27,6 +30,7 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
     tileWidth: tileConfig.tileWidth,
     tileHeight: tileConfig.tileHeight,
     placeholder: tileConfig.placeholder,
+    maxTextureSize: gpuMaxTex,
     onProgress: (loaded, total) => {
       console.info(`[Earth] Day texture tile ${loaded}/${total}`);
     },

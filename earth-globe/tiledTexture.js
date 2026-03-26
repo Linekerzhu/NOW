@@ -15,6 +15,7 @@ import * as THREE from 'three';
  * @param {number} opts.tileWidth - pixel width of each tile
  * @param {number} opts.tileHeight - pixel height of each tile
  * @param {string} opts.placeholder - path to the low-res placeholder image
+ * @param {number} [opts.maxTextureSize=8192] - GPU max texture dimension
  * @param {(loaded: number, total: number) => void} [opts.onProgress] - progress callback
  * @returns {{ texture: THREE.CanvasTexture, cancel: () => void }}
  */
@@ -25,15 +26,16 @@ export function createTiledTexture({
   tileWidth,
   tileHeight,
   placeholder,
+  maxTextureSize = 8192,
   onProgress,
 }) {
   const sourceWidth = cols * tileWidth;
   const sourceHeight = rows * tileHeight;
   const totalTiles = cols * rows;
 
-  // Cap canvas to GPU max texture size (commonly 16384) to prevent
-  // Three.js from silently downscaling the entire texture every frame.
-  const MAX_TEX = 16384;
+  // Use provided GPU max texture size, capped for safety to avoid
+  // texSubImage2D failures on very large textures (537MB+ per upload).
+  const MAX_TEX = Math.min(maxTextureSize, 16384);
   const scale = Math.min(1, MAX_TEX / Math.max(sourceWidth, sourceHeight));
   const canvasW = Math.round(sourceWidth * scale);
   const canvasH = Math.round(sourceHeight * scale);
@@ -53,8 +55,6 @@ export function createTiledTexture({
   // THREE.CanvasTexture auto-reads from the canvas
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  // Disable mipmaps during loading to prevent partial mipmap states
-  // which cause black rectangles when bloom reads intermediate levels
   texture.generateMipmaps = false;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
@@ -104,10 +104,6 @@ export function createTiledTexture({
           ctx2d.drawImage(bitmap, dx, dy, drawTileW + 1, drawTileH + 1);
           bitmap.close();
 
-          // Yield to next frame before GPU upload to avoid mid-render artifacts
-          await waitFrame();
-
-          texture.needsUpdate = true;
           tilesLoaded++;
 
           if (onProgress) {
@@ -121,13 +117,18 @@ export function createTiledTexture({
       }
     }
 
-    // All tiles loaded — keep mipmaps disabled.
-    // Enabling generateMipmaps after initial creation causes black rectangles:
-    // the GL texture was allocated without mipmap storage, so late mipmap
-    // generation produces uninitialized levels that flicker at certain zoom.
-    // LinearFilter on a 16K source is visually sufficient.
-    if (tilesLoaded > 0) {
-      texture.needsUpdate = true;
+    // All tiles loaded — do a single clean GPU upload via ImageBitmap.
+    // This avoids texSubImage2D issues that caused black rectangles when
+    // updating a large CanvasTexture in-place.
+    if (tilesLoaded > 0 && !cancelled) {
+      try {
+        const bitmap = await createImageBitmap(canvas);
+        texture.image = bitmap;
+        texture.needsUpdate = true;
+      } catch {
+        // Fallback: just mark the canvas texture for update
+        texture.needsUpdate = true;
+      }
     }
   }
 
