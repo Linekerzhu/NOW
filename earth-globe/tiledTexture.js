@@ -121,10 +121,12 @@ export function createTiledTexture({
       }
     }
 
-    // All tiles loaded — enable mipmaps only if at least one tile succeeded
+    // All tiles loaded — keep mipmaps disabled.
+    // Enabling generateMipmaps after initial creation causes black rectangles:
+    // the GL texture was allocated without mipmap storage, so late mipmap
+    // generation produces uninitialized levels that flicker at certain zoom.
+    // LinearFilter on a 16K source is visually sufficient.
     if (tilesLoaded > 0) {
-      texture.generateMipmaps = true;
-      texture.minFilter = THREE.LinearMipmapLinearFilter;
       texture.needsUpdate = true;
     }
   }
