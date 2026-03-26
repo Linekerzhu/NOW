@@ -79,20 +79,21 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
   const jinshanDayTex = createRegionalTexPlaceholder();
 
   // UV bounds: vec4(u_min, v_min, u_max, v_max)
-  // UV formula: u = (lon + 180) / 360, v = (90 - lat) / 180
+  // Three.js SphereGeometry UV: u = (lon+180)/360, v = (90+lat)/180
+  //   North pole → UV.y = 1, South pole → UV.y = 0
   // Shanghai WMS BBOX: 119°-123°E, 29°-33°N
   const shanghaiUVBounds = new THREE.Vector4(
     (119 + 180) / 360,   // u_min = 0.83056
-    (90 - 33) / 180,     // v_min = 0.31667 (north edge → smaller v)
+    (90 + 29) / 180,     // v_min = 0.66111 (south edge → smaller v)
     (123 + 180) / 360,   // u_max = 0.84167
-    (90 - 29) / 180,     // v_max = 0.33889 (south edge → larger v)
+    (90 + 33) / 180,     // v_max = 0.68333 (north edge → larger v)
   );
   // Jinshan WMS BBOX: 120.8°-121.8°E, 30.4°-31.4°N
   const jinshanUVBounds = new THREE.Vector4(
     (120.8 + 180) / 360, // u_min = 0.83556
-    (90 - 31.4) / 180,   // v_min = 0.32556
+    (90 + 30.4) / 180,   // v_min = 0.66889
     (121.8 + 180) / 360, // u_max = 0.83833
-    (90 - 30.4) / 180,   // v_max = 0.33111
+    (90 + 31.4) / 180,   // v_max = 0.67444
   );
 
   const material = new THREE.ShaderMaterial({
