@@ -33,11 +33,21 @@ export function createInfoCard(data) {
     card.classList.add('info-card--high');
   }
 
-  card.innerHTML = `
-    <div class="info-card__title">${data.title}</div>
-    <div class="info-card__summary">${data.summary}</div>
-    <div class="info-card__meta">[${data.source}]  ${data.time}</div>
-  `;
+  const title = document.createElement('div');
+  title.className = 'info-card__title';
+  title.textContent = data.title;
+
+  const summary = document.createElement('div');
+  summary.className = 'info-card__summary';
+  summary.textContent = data.summary;
+
+  const meta = document.createElement('div');
+  meta.className = 'info-card__meta';
+  meta.textContent = `[${data.source}]  ${data.time}`;
+
+  card.appendChild(title);
+  card.appendChild(summary);
+  card.appendChild(meta);
 
   card.style.opacity = '0';
   card.style.pointerEvents = 'none';
