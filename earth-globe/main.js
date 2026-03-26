@@ -16,6 +16,8 @@ import { createSun } from './sunVisual.js';
 import { showLoading, hideLoading, setProgress, showWebGLError } from './loading.js';
 import { buildGrid, fetchCloudCover } from './weatherService.js';
 import { generateCloudTexture } from './weatherCloudTexture.js';
+import { createOverlayContainer } from './overlay.js';
+import { showNewsSequence } from './cardLifecycle.js';
 
 // ============================================================================
 //  [Improvement #5] WebGL compatibility detection
@@ -312,6 +314,23 @@ function animate() {
   composer.render();
 }
 animate();
+
+// ============================================================================
+//  M2: Coordinate system + news card lifecycle
+// ============================================================================
+createOverlayContainer();
+
+const MOCK_NEWS = [
+  { lat: 39.90, lon: 116.40, title: '华北电网负荷创新高', summary: '京津唐电网最大负荷达到 8500 万千瓦', source: '国家电网', time: '09:30', priority: 'normal' },
+  { lat: 31.23, lon: 121.47, title: '上海外高桥电厂检修完成', summary: '三号机组恢复满负荷运行', source: '华东能监局', time: '10:15', priority: 'normal' },
+  { lat: 30.74, lon: 121.34, title: '金山海上风电并网', summary: '装机容量 30 万千瓦', source: '上海电力', time: '11:00', priority: 'normal' },
+  { lat: 27.00, lon: 103.00, title: '白鹤滩水电站满发', summary: '16 台机组全部投产，日发电量超 1.5 亿千瓦时', source: '三峡集团', time: '14:00', priority: 'high' },
+  { lat: 39.90, lon: 116.40, title: '北京新能源消纳率达 98%', summary: '风光发电弃电率持续下降', source: '北京电力', time: '16:30', priority: 'normal' },
+];
+
+setTimeout(() => {
+  showNewsSequence(MOCK_NEWS, earthGroup, camera, renderer.domElement);
+}, 3000);
 
 // ============================================================================
 //  [Improvement #3] Resize debounce — coalesces rapid resize events

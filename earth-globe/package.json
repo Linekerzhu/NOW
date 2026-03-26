@@ -10,6 +10,7 @@
     "format": "prettier --write '**/*.{js,json,css,html}' --ignore-path node_modules"
   },
   "dependencies": {
+    "gsap": "^3.14.2",
     "three": "0.170.0"
   },
   "devDependencies": {
