@@ -116,9 +116,10 @@ export const CONFIG = {
       placeholder: '/textures/earth-day-8k.jpg',
     },
     night: '/textures/earth-night-8k.jpg',
-    normal: '/textures/earth-normal-2k.jpg',
-    clouds: '/textures/earth-clouds-2k.jpg',
+    normal: '/textures/earth-normal-8k.jpg',         // was earth-normal-2k.jpg
+    clouds: '/textures/earth-clouds-8k.jpg',         // was earth-clouds-2k.jpg (now 8K!)
     heightmap: '/textures/earth-topo-5400x2700.jpg',
+    specular: '/textures/earth-specular-8k.jpg',     // NEW
   },
 
   earthSurface: {
