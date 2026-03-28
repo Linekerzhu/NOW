@@ -295,10 +295,9 @@ function animate() {
     // Ocean surface tracks sea level: slightly above displaced sea floor
     const seaLevelScale = 1.0 + (CONFIG.ocean.seaLevel + 0.01) * dispScale / earthRadius;
     ocean.object3D.scale.setScalar(seaLevelScale);
-    // Procedural biome blend: 0 at far zoom (satellite texture), up to 0.4 at close zoom
-    const procBlend = THREE.MathUtils.lerp(0.4, 0.0,
-      THREE.MathUtils.smoothstep(distRatio, 1.25, 1.45));
-    earth.material.uniforms.proceduralBlend.value = procBlend;
+    // Procedural biome blend: disabled by default (satellite textures sufficient).
+    // Enable via GUI "procedural blend" slider if needed for stylized look.
+    // earth.material.uniforms.proceduralBlend.value = 0.0;
 
   // --- Periodic sun/moon direction update ---
   const now = Date.now();
