@@ -1,52 +1,82 @@
 /**
  * pixelMode.js — 像素化后处理模式
  *
- * 使用 Three.js RenderPixelatedPass 将场景以固定低分辨率渲染后
- * nearest-neighbor 放大，实现像素艺术风格。像素块大小在屏幕空间固定，
- * 不随缩放改变。
+ * 三层像素艺术效果：
+ *   1. RenderPixelatedPass — 固定低分辨率 + nearest-neighbor 放大 + 边缘描线
+ *   2. QuantizeDitherPass — 色彩量化 + 4×4 Bayer 有序抖动
+ *   3. Bloom 保持在像素化之后 — 产生 CRT 荧光溢出效果
+ *
+ * 渲染管线：
+ *   正常模式: RenderPass → BloomPass → OutputPass
+ *   像素模式: RenderPixelatedPass → QuantizeDitherPass → BloomPass → OutputPass
  */
 
 import { Vector2 } from 'three';
 import { RenderPixelatedPass } from 'three/examples/jsm/postprocessing/RenderPixelatedPass.js';
+import { createQuantizeDitherPass } from './quantizeDitherPass.js';
 
 /**
- * 创建像素模式控制器。
- *
  * @param {import('three/examples/jsm/postprocessing/EffectComposer.js').EffectComposer} composer
  * @param {THREE.Scene} scene
  * @param {THREE.PerspectiveCamera} camera
- * @param {{ pixelSize?: number, normalEdgeStrength?: number, depthEdgeStrength?: number }} [options]
- * @returns {{
- *   enabled: boolean,
- *   pixelSize: number,
- *   toggle: () => boolean,
- *   setEnabled: (v: boolean) => void,
- *   setPixelSize: (n: number) => void,
- *   dispose: () => void,
- * }}
+ * @param {object} [options]
+ * @param {number} [options.pixelSize=6]
+ * @param {number} [options.colorNum=5] - 每通道色阶数 (3=8色, 4=64色, 5=125色)
+ * @param {number} [options.ditherStrength=0.8]
+ * @param {number} [options.normalEdgeStrength=0.15]
+ * @param {number} [options.depthEdgeStrength=0.15]
  */
 export function createPixelMode(composer, scene, camera, options = {}) {
-  const initialPixelSize = options.pixelSize ?? 6;
+  const pixelPass = new RenderPixelatedPass(
+    options.pixelSize ?? 6,
+    scene,
+    camera,
+    {
+      normalEdgeStrength: options.normalEdgeStrength ?? 0.15,
+      depthEdgeStrength: options.depthEdgeStrength ?? 0.15,
+    },
+  );
 
-  const pixelPass = new RenderPixelatedPass(initialPixelSize, scene, camera, {
-    normalEdgeStrength: options.normalEdgeStrength ?? 0.15,
-    depthEdgeStrength: options.depthEdgeStrength ?? 0.15,
+  const quantizePass = createQuantizeDitherPass({
+    colorNum: options.colorNum ?? 5,
+    ditherStrength: options.ditherStrength ?? 0.8,
   });
 
-  // Keep a reference to the original RenderPass (first pass in the composer)
+  // References to original passes
+  // Normal pipeline:  [0]=RenderPass  [1]=BloomPass  [2]=OutputPass
+  // Pixel pipeline:   [0]=PixelPass   [1]=QuantizePass  [2]=BloomPass  [3]=OutputPass
   const renderPass = composer.passes[0];
 
   let enabled = false;
 
-  function setEnabled(v) {
-    enabled = v;
-    composer.passes[0] = enabled ? pixelPass : renderPass;
-    // Sync size with current composer resolution
+  function syncSize() {
     const size = composer.renderer.getSize(new Vector2());
-    const pixelRatio = composer.renderer.getPixelRatio();
-    const w = size.x * pixelRatio;
-    const h = size.y * pixelRatio;
-    composer.passes[0].setSize(w, h);
+    const pr = composer.renderer.getPixelRatio();
+    const w = size.x * pr;
+    const h = size.y * pr;
+    pixelPass.setSize(w, h);
+    // Quantize resolution should match the pixelated resolution (not screen)
+    const pixelW = Math.floor(w / pixelPass.pixelSize);
+    const pixelH = Math.floor(h / pixelPass.pixelSize);
+    quantizePass.setResolution(pixelW, pixelH);
+  }
+
+  function setEnabled(v) {
+    if (enabled === v) return;
+    enabled = v;
+
+    if (enabled) {
+      // Replace RenderPass with PixelPass, insert QuantizePass after it
+      composer.passes[0] = pixelPass;
+      composer.passes.splice(1, 0, quantizePass);
+    } else {
+      // Restore RenderPass, remove QuantizePass
+      composer.passes[0] = renderPass;
+      const idx = composer.passes.indexOf(quantizePass);
+      if (idx !== -1) composer.passes.splice(idx, 1);
+    }
+
+    syncSize();
   }
 
   function toggle() {
@@ -55,7 +85,16 @@ export function createPixelMode(composer, scene, camera, options = {}) {
   }
 
   function setPixelSize(n) {
-    pixelPass.setPixelSize(Math.max(1, Math.round(n)));
+    pixelPass.setPixelSize(Math.max(2, Math.round(n)));
+    syncSize();
+  }
+
+  function setColorNum(n) {
+    quantizePass.uniforms.colorNum.value = Math.max(2, Math.round(n));
+  }
+
+  function setDitherStrength(v) {
+    quantizePass.uniforms.ditherStrength.value = v;
   }
 
   return {
@@ -64,8 +103,11 @@ export function createPixelMode(composer, scene, camera, options = {}) {
     toggle,
     setEnabled,
     setPixelSize,
+    setColorNum,
+    setDitherStrength,
     dispose() {
       pixelPass.dispose();
+      quantizePass.material.dispose();
     },
   };
 }

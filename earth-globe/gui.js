@@ -262,13 +262,24 @@ export async function initDevGUI({
 
   // ==== Pixel Mode ====
   if (pixelMode) {
-    const pixelFolder = gui.addFolder('Pixel Mode');
-    const pixelState = { enabled: pixelMode.enabled, pixelSize: pixelMode.pixelSize };
+    const pixelFolder = gui.addFolder('🎮 Pixel Mode');
+    const pixelState = {
+      enabled: pixelMode.enabled,
+      pixelSize: 6,
+      colorLevels: 5,
+      ditherStrength: 0.8,
+    };
     pixelFolder.add(pixelState, 'enabled').name('enabled').onChange((v) => {
       pixelMode.setEnabled(v);
     });
     pixelFolder.add(pixelState, 'pixelSize', 2, 16, 1).name('pixel size').onChange((v) => {
       pixelMode.setPixelSize(v);
+    });
+    pixelFolder.add(pixelState, 'colorLevels', 2, 10, 1).name('color levels').onChange((v) => {
+      pixelMode.setColorNum(v);
+    });
+    pixelFolder.add(pixelState, 'ditherStrength', 0, 1.5, 0.05).name('dither').onChange((v) => {
+      pixelMode.setDitherStrength(v);
     });
   }
 
