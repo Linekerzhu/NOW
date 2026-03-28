@@ -290,7 +290,11 @@ function animate() {
     const distRatio = camDist / earthRadius;
     const exaggeration = THREE.MathUtils.lerp(1.5, 5.0,
       THREE.MathUtils.smoothstep(distRatio, 1.25, 1.55));
-    earth.material.uniforms.displacementScale.value = exaggeration * earthRadius * 0.001389;
+    const dispScale = exaggeration * earthRadius * 0.001389;
+    earth.material.uniforms.displacementScale.value = dispScale;
+    // Ocean surface tracks sea level: slightly above displaced sea floor
+    const seaLevelScale = 1.0 + (CONFIG.ocean.seaLevel + 0.01) * dispScale / earthRadius;
+    ocean.object3D.scale.setScalar(seaLevelScale);
 
   // --- Periodic sun/moon direction update ---
   const now = Date.now();
