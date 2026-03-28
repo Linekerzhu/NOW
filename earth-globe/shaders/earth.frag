@@ -131,40 +131,47 @@ void main() {
   color += vec3(0.04, 0.06, 0.14) * blueHourBand * blueHourIntensity;
 
   // --- Heightmap self-shadowing ---
-  // March along sun direction in UV space to check if nearby terrain
-  // occludes direct sunlight (mountain shadow casting)
+  // Check if nearby terrain toward the sun is taller → casts shadow here.
+  // Uses a simple horizon angle comparison: if the angle to a neighbor's
+  // peak is greater than the sun's elevation, we're in shadow.
   float selfShadow = 1.0;
   if (terminator > 0.01) {
     float currentHeight = texture2D(heightMap, vUv).r;
 
-    // Project sun direction onto tangent plane → UV step direction
-    vec2 sunUV = vec2(dot(sunDir, T), dot(sunDir, B));
-    float sunUVLen = length(sunUV);
-    if (sunUVLen > 0.001) {
-      sunUV /= sunUVLen;
-      // Step size: ~3 texels per step (heightmap ~5400 wide)
-      vec2 texelStep = sunUV * (3.0 / 5400.0);
-      // Sun elevation relative to surface — low sun = longer shadows
-      float sunElevation = max(dot(sunDir, N), 0.001);
+    // Sun direction on the tangent plane → UV step direction
+    vec2 sunTangent = vec2(dot(sunDir, T), dot(sunDir, B));
+    float sunTangentLen = length(sunTangent);
 
-      for (int s = 1; s <= 8; s++) {
-        vec2 sampleUV = vUv + texelStep * float(s);
-        float sampleHeight = texture2D(heightMap, sampleUV).r;
-        // Height threshold: how high must neighbor be to cast shadow here?
-        // Uses sun elevation angle: low sun → even small hills cast far shadows
-        float threshold = currentHeight + sunElevation * float(s) * 0.15;
-        if (sampleHeight > threshold) {
-          // Soft shadow with distance falloff
-          selfShadow = 1.0 - smoothstep(0.0, 0.03, sampleHeight - threshold);
-          break;
-        }
+    if (sunTangentLen > 0.001) {
+      // Sun elevation: angle above the local horizon
+      float sunElev = max(dot(sunDir, N), 0.001);
+
+      // Step toward the sun in UV space (2 texels per step)
+      vec2 step = normalize(sunTangent) * (2.0 / 5400.0);
+
+      // The "horizon angle" for each neighbor: how steep is the slope
+      // from our point to that neighbor, vs how high the sun is?
+      float maxTanAngle = 0.0;
+      for (int s = 1; s <= 6; s++) {
+        float sampleHeight = texture2D(heightMap, vUv + step * float(s)).r;
+        float dh = sampleHeight - currentHeight;
+        // tan(angle to neighbor peak) = height_diff / horizontal_distance
+        // We normalize by step count as a proxy for horizontal distance
+        float tanAngle = dh / (float(s) * 0.005);
+        maxTanAngle = max(maxTanAngle, tanAngle);
       }
+
+      // Compare horizon angle to sun elevation
+      // If horizon > sun elevation → in shadow
+      float horizon = maxTanAngle * displacementScale;
+      selfShadow = smoothstep(0.0, sunElev, horizon);
+      selfShadow = 1.0 - selfShadow * 0.6; // cap at 60% shadow
     }
   }
 
   // --- Day-side diffuse with normal map ---
   float diffuse = max(sunDotBumped, 0.0);
-  color *= mix(1.0, (0.6 + 0.4 * diffuse) * mix(1.0, selfShadow, 0.5), terminator);
+  color *= mix(1.0, (0.6 + 0.4 * diffuse) * selfShadow, terminator);
 
   // Apply orbital eccentricity
   color *= mix(1.0, sunIntensity, terminator);
