@@ -310,6 +310,12 @@ function animate() {
     // Ocean surface tracks sea level: slightly above displaced sea floor
     const seaLevelScale = 1.0 + (CONFIG.ocean.seaLevel + 0.01) * dispScale / earthRadius;
     ocean.object3D.scale.setScalar(seaLevelScale);
+    // Fade out ocean at close zoom — satellite texture handles water at L2/L3
+    const oceanOpacity = THREE.MathUtils.smoothstep(distRatio, 1.35, 1.50);
+    ocean.object3D.visible = oceanOpacity > 0.01;
+    if (ocean.object3D.visible) {
+      ocean.object3D.material.uniforms.maxOpacity.value = CONFIG.ocean.opacity * oceanOpacity;
+    }
     // Procedural biome blend: disabled by default (satellite textures sufficient).
     // Enable via GUI "procedural blend" slider if needed for stylized look.
     // earth.material.uniforms.proceduralBlend.value = 0.0;
