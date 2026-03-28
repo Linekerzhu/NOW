@@ -187,17 +187,21 @@ void main() {
   float NdotH = max(dot(rippleNormal, halfDir), 0.0);
   float VdotH = max(dot(viewDir, halfDir), 0.0);
 
-  // GGX (Trowbridge-Reitz) NDF — realistic long-tail sun glint
-  float roughness = 0.15;
-  float a2 = roughness * roughness;
-  float denom = NdotH * NdotH * (a2 - 1.0) + 1.0;
-  float D_GGX = a2 / (3.14159 * denom * denom);
+  // GGX (Trowbridge-Reitz) NDF — two roughness layers for realistic sun glint
+  // Sharp core (roughness 0.12) + wide haze (roughness 0.4) for natural falloff
+  float NdotH2 = NdotH * NdotH;
+
+  float a2_sharp = 0.12 * 0.12;
+  float d_sharp = a2_sharp / (3.14159 * pow(NdotH2 * (a2_sharp - 1.0) + 1.0, 2.0));
+
+  float a2_wide = 0.4 * 0.4;
+  float d_wide = a2_wide / (3.14159 * pow(NdotH2 * (a2_wide - 1.0) + 1.0, 2.0));
 
   // Schlick Fresnel for water (IOR 1.33 → F0 = 0.02)
   float F = 0.02 + 0.98 * pow(1.0 - VdotH, 5.0);
 
   vec3 glintColor = vec3(1.0, 0.95, 0.85);
-  color += glintColor * D_GGX * F * oceanMask * terminator;
+  color += glintColor * (d_sharp * 1.8 + d_wide * 0.3) * F * oceanMask * terminator;
 
   // Fresnel-boosted ocean sky reflection
   float oceanFresnel = pow(fresnelFactor(viewDir, N), 4.0);
