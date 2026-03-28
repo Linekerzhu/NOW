@@ -158,8 +158,9 @@ void main() {
   float viewFresnel = fresnelFactor(viewDir, N);
   float airglowMask = pow(viewFresnel, 6.0);
   float nightEdge = smoothstep(0.05, -0.25, sunDot);
-  vec3 airglowColor = vec3(0.03, 0.08, 0.03);
-  color += airglowColor * airglowMask * nightEdge * 0.3;
+  // Airglow: subtle blue-green, less green-dominant to avoid green edge artifacts
+  vec3 airglowColor = vec3(0.02, 0.05, 0.04);
+  color += airglowColor * airglowMask * nightEdge * 0.25;
 
   // --- Twilight warm atmospheric scattering ---
   float twilightBand = smoothstep(-0.2, 0.0, sunDot) * smoothstep(0.2, 0.0, sunDot);
@@ -168,15 +169,17 @@ void main() {
   // === OCEAN SUN GLINT ===
   float oceanMask;
   if (hasSpecularMap > 0.5) {
-    oceanMask = texture2D(specularMap, vUv).r;
+    // Soften the binary specular map at coastlines to avoid harsh edges
+    float rawSpec = texture2D(specularMap, vUv).r;
+    oceanMask = smoothstep(0.1, 0.5, rawSpec);
   } else {
     float luminance = dot(dayColor, vec3(0.299, 0.587, 0.114));
     float blueRatio = dayColor.b / (luminance + 0.01);
     oceanMask = smoothstep(0.18, 0.08, luminance) * smoothstep(1.1, 1.5, blueRatio);
   }
 
-  // Darken ocean base for contrast with specular
-  color *= mix(1.0, 0.85, oceanMask * terminator);
+  // Subtle ocean darkening for specular contrast (0.92 = gentle)
+  color *= mix(1.0, 0.92, oceanMask * terminator);
 
   // Animated micro-ripple: subtle normal perturbation in ocean areas
   float ripple1 = noise(vUv.x * 800.0 + time * 2.0) * 0.5 + 0.5;

@@ -67,9 +67,9 @@ export const CONFIG = {
   },
 
   bloom: {
-    strength: 0.55,
-    radius: 0.45,
-    threshold: 0.65,
+    strength: 0.45,
+    radius: 0.35,
+    threshold: 0.75,
   },
 
   lighting: {
