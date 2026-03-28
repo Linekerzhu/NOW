@@ -33,6 +33,7 @@ export async function initDevGUI({
   _tmpCtrlOffset,
   weatherState,
   refreshWeather,
+  pixelMode,
 }) {
   const { GUI } = await import('lil-gui');
   const gui = new GUI({ title: '🌍 Earth Globe' });
@@ -258,6 +259,18 @@ export async function initDevGUI({
   bloomFolder.add(bloomPass, 'strength', 0, 2, 0.01);
   bloomFolder.add(bloomPass, 'radius', 0, 2, 0.01);
   bloomFolder.add(bloomPass, 'threshold', 0, 1, 0.01);
+
+  // ==== Pixel Mode ====
+  if (pixelMode) {
+    const pixelFolder = gui.addFolder('Pixel Mode');
+    const pixelState = { enabled: pixelMode.enabled, pixelSize: pixelMode.pixelSize };
+    pixelFolder.add(pixelState, 'enabled').name('enabled').onChange((v) => {
+      pixelMode.setEnabled(v);
+    });
+    pixelFolder.add(pixelState, 'pixelSize', 2, 16, 1).name('pixel size').onChange((v) => {
+      pixelMode.setPixelSize(v);
+    });
+  }
 
   // ==== Lighting ====
   const lightFolder = gui.addFolder('Lighting');

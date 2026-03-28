@@ -21,6 +21,7 @@ import { initHUD, setupLevelButtons } from './hud.js';
 import { loadNewsData } from './data.js';
 import { initLevelLoop, startDisplayLoop } from './levelLoop.js';
 import { LEVEL_ORBITS } from './camera.js';
+import { createPixelMode } from './pixelMode.js';
 
 // ============================================================================
 //  [Improvement #5] WebGL compatibility detection
@@ -112,6 +113,12 @@ const bloomPass = new UnrealBloomPass(
 );
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
+
+// --- Pixel mode (toggleable post-processing) ---
+const pixelMode = createPixelMode(composer, scene, camera, { pixelSize: 6 });
+if (new URLSearchParams(location.search).has('pixel')) {
+  pixelMode.setEnabled(true);
+}
 
 // --- Earth group (oblate) ---
 const earthGroup = new THREE.Group();
@@ -394,6 +401,8 @@ export function destroy() {
   window.removeEventListener('resize', onResize);
   controls.dispose();
 
+  pixelMode.dispose();
+
   for (const component of components) {
     component.dispose();
   }
@@ -424,6 +433,7 @@ if (import.meta.env.DEV) {
       _tmpCtrlOffset,
       weatherState,
       refreshWeather,
+      pixelMode,
     }).then(gui => { _guiInstance = gui; });
   });
 }
