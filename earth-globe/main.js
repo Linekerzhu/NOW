@@ -284,34 +284,30 @@ function animate() {
   ctx.cloudUVOffset = clouds.cloudUVOffset;  // read current value before loop
 
     // --- LOD switching + distance-adaptive terrain exaggeration ---
+    // camera.position.length() = distance from ORIGIN (not from target).
+    // Actual distRatios: L3 ≈ 1.05, L2 ≈ 1.18, L1 ≈ 1.38
     const camDist = camera.position.length();
     const distRatio = camDist / earthRadius;
 
-    // LOD: switch geometry resolution with hysteresis to prevent oscillation.
-    // Higher segments = finer terrain detail, NOT higher exaggeration.
-    //   LOD 2 (1024×512) — close (L3): finest terrain detail
-    //   LOD 1 (512×256)  — medium (L2)
-    //   LOD 0 (256×128)  — far (L1): coarsest, best performance
-    const lodUpThresholds   = [999, 1.46, 1.33];  // switch UP to this LOD when below
-    const lodDownThresholds = [1.52, 1.38, 0];     // switch DOWN from this LOD when above
-    const curLOD = earth.lodSegments;
-    const curLODIdx = curLOD[0] === 1024 ? 2 : curLOD[0] === 512 ? 1 : 0;
+    // LOD with hysteresis (up/down thresholds differ to prevent oscillation)
+    const curLODIdx = earth.lodSegments[0] === 1024 ? 2 : earth.lodSegments[0] === 512 ? 1 : 0;
     let newLOD = curLODIdx;
-    if (curLODIdx < 2 && distRatio < lodUpThresholds[curLODIdx + 1]) newLOD = curLODIdx + 1;
-    if (curLODIdx > 0 && distRatio > lodDownThresholds[curLODIdx]) newLOD = curLODIdx - 1;
+    if (curLODIdx === 0 && distRatio < 1.28) newLOD = 1;
+    if (curLODIdx === 1 && distRatio < 1.12) newLOD = 2;
+    if (curLODIdx === 1 && distRatio > 1.33) newLOD = 0;
+    if (curLODIdx === 2 && distRatio > 1.18) newLOD = 1;
     earth.setLOD(newLOD);
 
-    // Terrain exaggeration: constant safe value regardless of LOD.
-    // ~2.5x keeps displacement within vertex spacing at all LOD levels.
+    // Terrain exaggeration: higher at far view, lower at close
     const exaggeration = THREE.MathUtils.lerp(1.0, 2.5,
-      THREE.MathUtils.smoothstep(distRatio, 1.25, 1.55));
+      THREE.MathUtils.smoothstep(distRatio, 1.05, 1.40));
     const dispScale = exaggeration * earthRadius * 0.001389;
     earth.material.uniforms.displacementScale.value = dispScale;
     // Ocean surface tracks sea level: slightly above displaced sea floor
     const seaLevelScale = 1.0 + (CONFIG.ocean.seaLevel + 0.01) * dispScale / earthRadius;
     ocean.object3D.scale.setScalar(seaLevelScale);
     // Fade out ocean at close zoom — satellite texture handles water at L2/L3
-    const oceanOpacity = THREE.MathUtils.smoothstep(distRatio, 1.35, 1.50);
+    const oceanOpacity = THREE.MathUtils.smoothstep(distRatio, 1.10, 1.25);
     ocean.object3D.visible = oceanOpacity > 0.01;
     if (ocean.object3D.visible) {
       ocean.object3D.material.uniforms.maxOpacity.value = CONFIG.ocean.opacity * oceanOpacity;
