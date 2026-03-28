@@ -1,5 +1,4 @@
 #include common/fresnel.glsl
-#include common/noise.glsl
 
 uniform vec3 sunDirection;
 uniform float time;
@@ -9,6 +8,26 @@ varying vec3 vNormal;
 varying vec3 vWorldPosition;
 varying vec2 vUv;
 varying float vLatitude;
+
+// Integer-based hash — avoids sin(large_number) precision loss on
+// Metal/ANGLE GPUs that produces NaN and corrupts HalfFloat framebuffers.
+float hash(float n) {
+  n = fract(n * 0.1031);
+  n *= n + 33.33;
+  n *= n + n;
+  return fract(n);
+}
+
+float noise(float x) {
+  float i = floor(x);
+  float f = fract(x);
+  return mix(hash(i), hash(i + 1.0), f * f * (3.0 - 2.0 * f));
+}
+
+float noise2D(float x, float y) {
+  return noise(x + hash(floor(y)) * 127.1) * 0.5
+       + noise(y + hash(floor(x)) * 311.7) * 0.5;
+}
 
 void main() {
   vec3 normal = normalize(vNormal);
@@ -64,8 +83,10 @@ void main() {
   // --- Composite ---
   float alpha = latMask * nightMask * curtainPattern * edgeBoost * 0.35;
 
-  // No discard — with AdditiveBlending, near-zero alpha contributes nothing.
-  // Using discard with AdditiveBlending causes black rectangles on some
-  // Metal/ANGLE GPU drivers (blend state corruption after discard).
-  gl_FragColor = vec4(auroraColor * (0.8 + curtainPattern * 0.4), alpha);
+  // Clamp output to prevent any residual NaN/Inf from reaching
+  // the HalfFloat framebuffer where they would render as black.
+  alpha = clamp(alpha, 0.0, 1.0);
+  vec3 col = clamp(auroraColor * (0.8 + curtainPattern * 0.4), vec3(0.0), vec3(2.0));
+
+  gl_FragColor = vec4(col, alpha);
 }
