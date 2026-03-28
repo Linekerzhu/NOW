@@ -20,10 +20,6 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
 
   // --- Day texture: tiled progressive loading (16K) with 8K placeholder ---
   const tileConfig = textureConfig.dayTiles;
-  // Use half the GPU max texture size to stay within safe upload limits.
-  const gpuMaxTex = renderer
-    ? Math.floor(renderer.capabilities.maxTextureSize / 2)
-    : 8192;
   const tiledDay = createTiledTexture({
     basePath: tileConfig.basePath,
     cols: tileConfig.cols,
@@ -31,7 +27,6 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
     tileWidth: tileConfig.tileWidth,
     tileHeight: tileConfig.tileHeight,
     placeholder: tileConfig.placeholder,
-    maxTextureSize: gpuMaxTex,
     onProgress: (loaded, total) => {
       console.info(`[Earth] Day texture tile ${loaded}/${total}`);
     },
@@ -50,15 +45,6 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
   normalTex.colorSpace = THREE.LinearSRGBColorSpace;
   cloudTex.colorSpace = THREE.LinearSRGBColorSpace;
   heightTex.colorSpace = THREE.LinearSRGBColorSpace;
-
-  // Disable mipmaps on all NPOT (non-power-of-two) textures.
-  // NPOT textures (e.g. night 13500×6750, heightmap 5400×2700) can produce
-  // corrupted mipmap levels on some GPUs, causing black rectangles that
-  // flicker at certain zoom distances when the GPU selects those levels.
-  for (const tex of [nightTex, normalTex, cloudTex, heightTex]) {
-    tex.generateMipmaps = false;
-    tex.minFilter = THREE.LinearFilter;
-  }
 
   const maxAniso = renderer
     ? renderer.capabilities.getMaxAnisotropy()
@@ -113,10 +99,6 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
   const material = new THREE.ShaderMaterial({
     vertexShader,
     fragmentShader,
-    // DoubleSide prevents black rectangles caused by heightmap displacement
-    // folding triangles (max displacement 0.15 > vertex spacing 0.123),
-    // which makes them backfacing and culled, exposing the black background.
-    side: THREE.DoubleSide,
     uniforms: {
       dayTexture: { value: dayTex },
       nightTexture: { value: nightTex },
