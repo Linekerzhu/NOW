@@ -284,10 +284,11 @@ function animate() {
   ctx.cloudUVOffset = clouds.cloudUVOffset;  // read current value before loop
 
     // --- Distance-adaptive terrain exaggeration ---
+    // L3 distRatio ≈ 1.3 → 2x, L1 distRatio ≈ 1.5 → 15x
     const camDist = camera.position.length();
     const distRatio = camDist / earthRadius;
     const exaggeration = THREE.MathUtils.lerp(2.0, 15.0,
-      THREE.MathUtils.smoothstep(distRatio, 1.2, 3.0));
+      THREE.MathUtils.smoothstep(distRatio, 1.25, 1.55));
     earth.material.uniforms.displacementScale.value = exaggeration * earthRadius * 0.001389;
 
   // --- Periodic sun/moon direction update ---

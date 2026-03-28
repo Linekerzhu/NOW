@@ -11,7 +11,9 @@ import fragmentShader from './shaders/ocean.frag';
  */
 export function createOcean({ config, earthRadius, cameraPosition, specularTex, heightTex }) {
   const [segW, segH] = config.segments;
-  const geometry = new THREE.SphereGeometry(earthRadius, segW, segH);
+  // Slight offset above earth base radius ensures ocean renders in front
+  // of undisplaced earth surface, but still behind displaced land
+  const geometry = new THREE.SphereGeometry(earthRadius + 0.002, segW, segH);
 
   const material = new THREE.ShaderMaterial({
     vertexShader,
@@ -32,9 +34,6 @@ export function createOcean({ config, earthRadius, cameraPosition, specularTex, 
     transparent: true,
     depthWrite: true,
     side: THREE.FrontSide,
-    polygonOffset: true,
-    polygonOffsetFactor: 1,
-    polygonOffsetUnits: 1,
   });
 
   const object3D = new THREE.Mesh(geometry, material);
