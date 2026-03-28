@@ -3,7 +3,12 @@ import vertexShader from './shaders/atmosphere.vert';
 import fragmentShader from './shaders/atmosphere.frag';
 
 /**
- * Create the atmosphere glow component.
+ * Create the atmosphere component with physically-based scattering.
+ *
+ * Uses a BackSide sphere slightly larger than the earth. The fragment
+ * shader ray-marches through the atmosphere shell, accumulating
+ * Rayleigh + Mie single-scattering for realistic limb colors,
+ * sunsets, and horizon glow.
  *
  * @param {object} deps
  * @param {object} deps.config - CONFIG.atmosphere
@@ -13,14 +18,18 @@ import fragmentShader from './shaders/atmosphere.frag';
  */
 export function createAtmosphere({ config, earthRadius, cameraPosition }) {
   const [segW, segH] = config.segments;
-  const geometry = new THREE.SphereGeometry(earthRadius * config.heightFactor, segW, segH);
+  const atmosRadius = earthRadius * config.heightFactor;
+  const geometry = new THREE.SphereGeometry(atmosRadius, segW, segH);
 
   const material = new THREE.ShaderMaterial({
     vertexShader,
     fragmentShader,
     uniforms: {
-      cameraPos: { value: cameraPosition },  // live reference — updated by camera motion
+      cameraPos: { value: cameraPosition },
       sunDirection: { value: new THREE.Vector3(1, 0, 0) },
+      earthRadius: { value: earthRadius },
+      atmosphereRadius: { value: atmosRadius },
+      sunIntensity: { value: 20.0 },
     },
     side: THREE.BackSide,
     transparent: true,
@@ -36,6 +45,7 @@ export function createAtmosphere({ config, earthRadius, cameraPosition }) {
 
     update(ctx) {
       material.uniforms.sunDirection.value.copy(ctx.sunDirection);
+      material.uniforms.sunIntensity.value = 20.0 * ctx.sunIntensity;
     },
 
     dispose() {
