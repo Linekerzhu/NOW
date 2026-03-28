@@ -14,6 +14,7 @@ const LEVEL_ORDER = ['L1', 'L2', 'L3'];
 
 // Pre-loaded boundary line objects
 const boundaryLines = {
+  china: null,      // 全国省界 + 九段线
   shanghai: null,
   jinshan: null,
 };
@@ -41,10 +42,15 @@ const LEVEL_REGIONS = {
 export async function initLevelLoop(earthGroup, earth) {
   earthObj = earth;
   try {
-    const [shanghai, jinshan] = await Promise.all([
+    const [china, shanghai, jinshan] = await Promise.all([
+      loadBoundaries('/geo/china-provinces.json', earthGroup, {
+        color: 0x88ccff,       // 淡蓝色省界线
+        initialOpacity: 0.08,  // 常驻微弱显示
+      }),
       loadBoundaries('/geo/shanghai-districts.json', earthGroup),
       loadBoundaries('/geo/jinshan.json', earthGroup),
     ]);
+    boundaryLines.china = china;
     boundaryLines.shanghai = shanghai;
     boundaryLines.jinshan = jinshan;
     console.info('[LevelLoop] Boundaries pre-loaded');
@@ -94,6 +100,14 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
     try {
       // 1. Update HUD
       updateHUDLevel(level, config);
+
+      // Adjust China province boundaries opacity by level
+      if (boundaryLines.china) {
+        const chinaOpacity = { L1: 0.12, L2: 0.06, L3: 0.03 }[level] ?? 0.08;
+        gsap.to(boundaryLines.china.material, {
+          opacity: chinaOpacity, duration: 1.0, ease: 'power2.out',
+        });
+      }
 
       // Update overlay container level class for card sizing
       const overlayEl = document.getElementById('overlay');

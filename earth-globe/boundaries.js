@@ -13,15 +13,17 @@ const BOUNDARY_OFFSET = 0.005; // 微抬高避免 Z-fighting
  * 从 GeoJSON 生成球面边界线
  * @param {string} url - GeoJSON 文件路径
  * @param {THREE.Group} earthGroup - 添加为子对象
+ * @param {{ color?: number, initialOpacity?: number }} [options]
  * @returns {Promise<THREE.LineSegments>}
  */
-export async function loadBoundaries(url, earthGroup) {
+export async function loadBoundaries(url, earthGroup, options = {}) {
   const response = await fetch(url);
   const geoJson = await response.json();
 
   const positions = [];
 
   for (const feature of geoJson.features) {
+    if (!feature.geometry) continue; // skip features without geometry
     const geomType = feature.geometry.type;
     const coords = feature.geometry.coordinates;
 
@@ -30,12 +32,17 @@ export async function loadBoundaries(url, earthGroup) {
     if (geomType === 'Polygon') {
       rings = coords;
     } else if (geomType === 'MultiPolygon') {
-      rings = coords.flat(); // flatten one level: [ polygon1_rings, polygon2_rings ] → all rings
+      rings = coords.flat();
+    } else if (geomType === 'LineString') {
+      // Nine-dash line comes as LineString
+      rings = [coords];
+    } else if (geomType === 'MultiLineString') {
+      rings = coords;
     }
 
     for (const ring of rings) {
       for (let i = 0; i < ring.length - 1; i++) {
-        const [lon1, lat1] = ring[i];     // GeoJSON: [lon, lat]!
+        const [lon1, lat1] = ring[i];
         const [lon2, lat2] = ring[i + 1];
 
         const p1 = geoToSphere(lat1, lon1, EARTH_RADIUS + BOUNDARY_OFFSET);
@@ -50,9 +57,9 @@ export async function loadBoundaries(url, earthGroup) {
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 
   const material = new THREE.LineBasicMaterial({
-    color: 0x00ff00,
+    color: options.color ?? 0x00ff00,
     transparent: true,
-    opacity: 0,
+    opacity: options.initialOpacity ?? 0,
     depthWrite: false,
     depthTest: false,
   });
