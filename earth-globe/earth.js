@@ -115,6 +115,10 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
   const material = new THREE.ShaderMaterial({
     vertexShader,
     fragmentShader,
+    // DoubleSide prevents black rectangles caused by heightmap displacement
+    // folding triangles (max displacement 0.15 > vertex spacing 0.123),
+    // which makes them backfacing and culled, exposing the black background.
+    side: THREE.DoubleSide,
     uniforms: {
       dayTexture: { value: dayTex },
       nightTexture: { value: nightTex },

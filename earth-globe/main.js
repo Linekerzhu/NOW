@@ -310,10 +310,6 @@ function animate() {
     animState._bloomFadeIn.step();
   }
 
-  // Always render through the EffectComposer so OutputPass tone mapping
-  // stays consistent. BloomPass is disabled during camera transitions
-  // (see animateTo) to prevent black-rectangle artifacts from rapid FOV
-  // changes, while keeping the visual appearance nearly identical.
   composer.render();
 }
 animate();
