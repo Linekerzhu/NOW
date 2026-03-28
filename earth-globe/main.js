@@ -148,6 +148,7 @@ scene.add(sun.object3D);
 // Components in update order (clouds before earth for cloudUVOffset sync)
 const components = [clouds, earth, atmosphere, aurora, stars, moon, sun];
 
+
 // --- Weather system ---
 const weatherGrid = buildGrid(CONFIG.weather.gridResolution);
 let lastWeatherUpdate = 0; // force immediate first fetch

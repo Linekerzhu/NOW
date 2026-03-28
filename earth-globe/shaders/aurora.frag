@@ -64,7 +64,8 @@ void main() {
   // --- Composite ---
   float alpha = latMask * nightMask * curtainPattern * edgeBoost * 0.35;
 
-  if (alpha < 0.005) discard;
-
+  // No discard — with AdditiveBlending, near-zero alpha contributes nothing.
+  // Using discard with AdditiveBlending causes black rectangles on some
+  // Metal/ANGLE GPU drivers (blend state corruption after discard).
   gl_FragColor = vec4(auroraColor * (0.8 + curtainPattern * 0.4), alpha);
 }
