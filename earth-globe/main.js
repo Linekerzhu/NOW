@@ -283,12 +283,21 @@ function animate() {
   ctx.dtNorm = dtNorm;
   ctx.cloudUVOffset = clouds.cloudUVOffset;  // read current value before loop
 
-    // --- Distance-adaptive terrain exaggeration ---
-    // Capped at 2.5x for 512-segment geometry to prevent triangle flicker.
-    // Phase 4 LOD (1024+ segments) will raise this to 10-15x.
+    // --- LOD switching + distance-adaptive terrain exaggeration ---
     const camDist = camera.position.length();
     const distRatio = camDist / earthRadius;
-    const exaggeration = THREE.MathUtils.lerp(1.0, 2.5,
+
+    // LOD: switch geometry resolution based on distance
+    //   LOD 2 (1024×512) — close (L3), vertex spacing ~0.061 → safe up to ~4.4x
+    //   LOD 1 (512×256)  — medium (L2), vertex spacing ~0.123 → safe up to ~2.2x
+    //   LOD 0 (256×128)  — far (L1), vertex spacing ~0.245 → safe up to ~1.5x
+    const lod = distRatio < 1.35 ? 2 : distRatio < 1.48 ? 1 : 0;
+    earth.setLOD(lod);
+
+    // Exaggeration scaled per-LOD to stay within safe vertex spacing
+    const maxExag = [2.5, 4.0, 8.0][lod];
+    const minExag = [1.0, 1.5, 2.0][lod];
+    const exaggeration = THREE.MathUtils.lerp(minExag, maxExag,
       THREE.MathUtils.smoothstep(distRatio, 1.25, 1.55));
     const dispScale = exaggeration * earthRadius * 0.001389;
     earth.material.uniforms.displacementScale.value = dispScale;

@@ -62,8 +62,13 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
     specularTex.anisotropy = maxAniso;
   }
 
-  const [segW, segH] = config.segments;
-  const geometry = new THREE.SphereGeometry(earthRadius, segW, segH);
+  // --- LOD geometry: 3 resolution levels ---
+  // Swapped at runtime based on camera distance.
+  // Higher segments allow more displacement exaggeration without triangle flicker.
+  const lodSegments = config.lodSegments || [[256, 128], [512, 256], [1024, 512]];
+  const geometries = lodSegments.map(([w, h]) => new THREE.SphereGeometry(earthRadius, w, h));
+  let currentLOD = 0;
+  const geometry = geometries[currentLOD];
 
   // --- Regional LOD overlay textures ---
   // Pre-create textures with a small canvas placeholder (NOT a white pixel)
@@ -177,6 +182,22 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
     /** Shared textures for other components (ocean, etc.) */
     textures: { specular: specularTex, height: heightTex },
 
+    /**
+     * Switch geometry LOD level.
+     * @param {number} level - 0 (low/far), 1 (medium), 2 (high/close)
+     */
+    setLOD(level) {
+      const idx = Math.max(0, Math.min(level, geometries.length - 1));
+      if (idx !== currentLOD) {
+        currentLOD = idx;
+        object3D.geometry = geometries[currentLOD];
+        console.info(`[Earth] LOD switched to level ${idx} (${lodSegments[idx][0]}×${lodSegments[idx][1]} segments)`);
+      }
+    },
+
+    /** Current LOD segment counts */
+    get lodSegments() { return lodSegments[currentLOD]; },
+
     update(ctx) {
       material.uniforms.sunDirection.value.copy(ctx.sunDirection);
       material.uniforms.sunIntensity.value = ctx.sunIntensity;
@@ -196,7 +217,7 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
 
     dispose() {
       tiledDay.cancel();
-      geometry.dispose();
+      geometries.forEach(g => g.dispose());
       material.dispose();
       dayTex.dispose();
       nightTex.dispose();
