@@ -16,9 +16,10 @@ uniform float twilightIntensity;
 uniform float blueHourIntensity;
 uniform float nightBrightness;
 uniform float cityLightBoost;
+uniform sampler2D specularMap;
+uniform float hasSpecularMap;
 uniform sampler2D heightMap;
 uniform float displacementScale;
-uniform float proceduralBlend;  // 0.0 = satellite only, 0.3-0.5 at close zoom
 
 // --- Regional LOD overlays ---
 uniform sampler2D regionDayTex1;       // Shanghai high-res day
@@ -63,50 +64,6 @@ vec4 sampleRegion(sampler2D regionTex, vec4 bounds, float opacity, vec2 uv) {
   return vec4(color, weight);
 }
 
-/**
- * Procedural biome coloring from altitude, latitude, and slope.
- * Blended with satellite texture at close zoom for extra detail.
- */
-vec3 proceduralBiome(float height, float slope, float latitude) {
-  // Snow line: lower at higher latitudes
-  float snowLine = mix(0.85, 0.3, smoothstep(0.4, 1.2, latitude));
-  float snowAmount = smoothstep(snowLine - 0.05, snowLine + 0.05, height);
-  snowAmount *= (1.0 - smoothstep(0.3, 0.7, slope)); // no snow on cliffs
-
-  // Rock on steep slopes
-  float rockAmount = smoothstep(0.3, 0.6, slope);
-
-  // Vegetation band (low-mid altitude, low latitude, moderate slope)
-  float vegBand = smoothstep(0.05, 0.15, height)
-                * smoothstep(0.5, 0.15, height)
-                * (1.0 - smoothstep(0.8, 1.3, latitude))
-                * (1.0 - smoothstep(0.2, 0.5, slope));
-
-  // Desert/arid at low altitude + mid latitude
-  float desertBand = smoothstep(0.03, 0.12, height)
-                   * smoothstep(0.3, 0.12, height)
-                   * smoothstep(0.15, 0.4, latitude)
-                   * (1.0 - smoothstep(0.6, 0.9, latitude));
-
-  // Color palette
-  vec3 snowColor  = vec3(0.92, 0.94, 0.98);
-  vec3 rockColor  = vec3(0.38, 0.33, 0.28);
-  vec3 vegColor   = vec3(0.18, 0.32, 0.10);
-  vec3 sandColor  = vec3(0.72, 0.65, 0.48);
-  vec3 dirtColor  = vec3(0.42, 0.36, 0.26);
-  vec3 shoreColor = vec3(0.58, 0.55, 0.42);
-
-  // Layer biomes
-  vec3 base = dirtColor;
-  base = mix(base, shoreColor, smoothstep(0.0, 0.06, height) * (1.0 - vegBand));
-  base = mix(base, sandColor, desertBand * 0.7);
-  base = mix(base, vegColor, vegBand);
-  base = mix(base, rockColor, rockAmount);
-  base = mix(base, snowColor, snowAmount);
-
-  return base;
-}
-
 void main() {
   // Force ALL sampler2D uniforms to be "alive" to prevent GLSL dead-code
   // elimination, which would cause Three.js to not assign texture units.
@@ -115,6 +72,7 @@ void main() {
   float _keepAlive = 0.0;
   _keepAlive += texture2D(regionDayTex1, vec2(0.5)).r * 0.0001;
   _keepAlive += texture2D(regionDayTex2, vec2(0.5)).r * 0.0001;
+  _keepAlive += texture2D(specularMap, vec2(0.5)).r * 0.0001;
   _keepAlive += texture2D(heightMap, vec2(0.5)).r * 0.0001;
 
   vec3 N = normalize(vNormal);
@@ -134,15 +92,6 @@ void main() {
   // --- Sample textures ---
   vec3 dayColor = texture2D(dayTexture, vUv).rgb;
   vec3 nightColor = texture2D(nightTexture, vUv).rgb;
-
-  // --- Procedural biome blending ---
-  if (proceduralBlend > 0.01) {
-    float h = texture2D(heightMap, vUv).r;
-    float slope = 1.0 - abs(dot(N, normalize(vWorldPosition)));
-    float latitude = abs(asin(normalize(vWorldPosition).y));
-    vec3 biomeColor = proceduralBiome(h, slope, latitude);
-    dayColor = mix(dayColor, biomeColor, proceduralBlend);
-  }
 
   // --- Regional LOD overlay (day only) ---
   vec4 r1 = sampleRegion(regionDayTex1, regionBounds1, regionOpacity1, vUv);
@@ -258,6 +207,51 @@ void main() {
   // --- Twilight warm atmospheric scattering ---
   float twilightBand = smoothstep(-0.2, 0.0, sunDot) * smoothstep(0.2, 0.0, sunDot);
   color += vec3(0.15, 0.08, 0.03) * twilightBand * twilightIntensity;
+
+  // === OCEAN SUN GLINT ===
+  float oceanMask;
+  if (hasSpecularMap > 0.5) {
+    // Soften the binary specular map at coastlines to avoid harsh edges
+    float rawSpec = texture2D(specularMap, vUv).r;
+    oceanMask = smoothstep(0.1, 0.5, rawSpec);
+  } else {
+    float luminance = dot(dayColor, vec3(0.299, 0.587, 0.114));
+    float blueRatio = dayColor.b / (luminance + 0.01);
+    oceanMask = smoothstep(0.18, 0.08, luminance) * smoothstep(1.1, 1.5, blueRatio);
+  }
+
+  // Subtle ocean darkening for specular contrast (0.92 = gentle)
+  color *= mix(1.0, 0.92, oceanMask * terminator);
+
+  // Animated micro-ripple: subtle normal perturbation in ocean areas
+  float ripple1 = noise(vUv.x * 800.0 + time * 2.0) * 0.5 + 0.5;
+  float ripple2 = noise(vUv.y * 600.0 - time * 1.5 + 100.0) * 0.5 + 0.5;
+  vec3 rippleNormal = normalize(perturbedNormal + vec3(ripple1 - 0.5, ripple2 - 0.5, 0.0) * 0.015 * oceanMask);
+
+  vec3 halfDir = normalize(sunDir + viewDir);
+  float NdotH = max(dot(rippleNormal, halfDir), 0.0);
+  float VdotH = max(dot(viewDir, halfDir), 0.0);
+
+  // GGX (Trowbridge-Reitz) NDF — two roughness layers for realistic sun glint
+  // Sharp core (roughness 0.12) + wide haze (roughness 0.4) for natural falloff
+  float NdotH2 = NdotH * NdotH;
+
+  float a2_sharp = 0.12 * 0.12;
+  float d_sharp = a2_sharp / (3.14159 * pow(NdotH2 * (a2_sharp - 1.0) + 1.0, 2.0));
+
+  float a2_wide = 0.4 * 0.4;
+  float d_wide = a2_wide / (3.14159 * pow(NdotH2 * (a2_wide - 1.0) + 1.0, 2.0));
+
+  // Schlick Fresnel for water (IOR 1.33 → F0 = 0.02)
+  float F = 0.02 + 0.98 * pow(1.0 - VdotH, 5.0);
+
+  vec3 glintColor = vec3(1.0, 0.95, 0.85);
+  color += glintColor * (d_sharp * 1.8 + d_wide * 0.3) * F * oceanMask * terminator;
+
+  // Fresnel-boosted ocean sky reflection
+  float oceanFresnel = pow(fresnelFactor(viewDir, N), 4.0);
+  vec3 skyReflectColor = vec3(0.15, 0.25, 0.45);
+  color += skyReflectColor * oceanFresnel * oceanMask * terminator * 0.25;
 
   // --- Fresnel rim ---
   color += vec3(0.12, 0.18, 0.28) * pow(viewFresnel, 4.0) * terminator * 0.3;

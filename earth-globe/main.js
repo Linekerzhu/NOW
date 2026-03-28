@@ -21,7 +21,6 @@ import { initHUD, setupLevelButtons } from './hud.js';
 import { loadNewsData } from './data.js';
 import { initLevelLoop, startDisplayLoop } from './levelLoop.js';
 import { LEVEL_ORBITS } from './camera.js';
-import { createOcean } from './ocean.js';
 
 // ============================================================================
 //  [Improvement #5] WebGL compatibility detection
@@ -133,14 +132,6 @@ const stars      = createStars({ config: CONFIG.stars });
 const moon       = createMoon({ config: CONFIG.moon, earthRadius, cameraPosition: camera.position });
 const sun        = createSun({ config: CONFIG.sun, earthRadius });
 
-const ocean = createOcean({
-  config: CONFIG.ocean,
-  earthRadius,
-  cameraPosition: camera.position,
-  specularTex: earth.textures.specular,
-  heightTex: earth.textures.height,
-});
-
 // Set initial moon position
 moon.setPosition(new Date());
 
@@ -148,7 +139,6 @@ moon.setPosition(new Date());
 // earthGroup gets oblate scaling; scene-level objects do not.
 earthGroup.add(clouds.object3D);
 earthGroup.add(earth.object3D);
-earthGroup.add(ocean.object3D);
 earthGroup.add(aurora.object3D);
 earthGroup.add(atmosphere.object3D);
 scene.add(stars.object3D);
@@ -156,7 +146,7 @@ scene.add(moon.object3D);
 scene.add(sun.object3D);
 
 // Components in update order (clouds before earth for cloudUVOffset sync)
-const components = [clouds, earth, ocean, atmosphere, aurora, stars, moon, sun];
+const components = [clouds, earth, atmosphere, aurora, stars, moon, sun];
 
 
 // --- Weather system ---
@@ -282,46 +272,6 @@ function animate() {
   ctx.delta = delta;
   ctx.dtNorm = dtNorm;
   ctx.cloudUVOffset = clouds.cloudUVOffset;  // read current value before loop
-
-    // --- LOD switching + distance-adaptive terrain exaggeration ---
-    // camera.position.length() = distance from ORIGIN (not from target).
-    // Actual distRatios: L3 ≈ 1.05, L2 ≈ 1.18, L1 ≈ 1.38
-    const camDist = camera.position.length();
-    const distRatio = camDist / earthRadius;
-
-    // LOD with hysteresis + cooldown to prevent damping-induced oscillation
-    if (!animate._lodCooldown) animate._lodCooldown = 0;
-    const lodNow = Date.now();
-    if (lodNow > animate._lodCooldown) {
-      const curLODIdx = earth.lodSegments[0] === 1024 ? 2 : earth.lodSegments[0] === 512 ? 1 : 0;
-      let newLOD = curLODIdx;
-      if (curLODIdx === 0 && distRatio < 1.25) newLOD = 1;
-      if (curLODIdx === 1 && distRatio < 1.10) newLOD = 2;
-      if (curLODIdx === 1 && distRatio > 1.35) newLOD = 0;
-      if (curLODIdx === 2 && distRatio > 1.20) newLOD = 1;
-      if (newLOD !== curLODIdx) {
-        earth.setLOD(newLOD);
-        animate._lodCooldown = lodNow + 500; // 500ms cooldown
-      }
-    }
-
-    // Terrain exaggeration: higher at far view, lower at close
-    const exaggeration = THREE.MathUtils.lerp(1.0, 2.5,
-      THREE.MathUtils.smoothstep(distRatio, 1.05, 1.40));
-    const dispScale = exaggeration * earthRadius * 0.001389;
-    earth.material.uniforms.displacementScale.value = dispScale;
-    // Ocean surface tracks sea level: slightly above displaced sea floor
-    const seaLevelScale = 1.0 + (CONFIG.ocean.seaLevel + 0.01) * dispScale / earthRadius;
-    ocean.object3D.scale.setScalar(seaLevelScale);
-    // Fade out ocean at close zoom — satellite texture handles water at L2/L3
-    const oceanOpacity = THREE.MathUtils.smoothstep(distRatio, 1.10, 1.25);
-    ocean.object3D.visible = oceanOpacity > 0.01;
-    if (ocean.object3D.visible) {
-      ocean.object3D.material.uniforms.maxOpacity.value = CONFIG.ocean.opacity * oceanOpacity;
-    }
-    // Procedural biome blend: disabled by default (satellite textures sufficient).
-    // Enable via GUI "procedural blend" slider if needed for stylized look.
-    // earth.material.uniforms.proceduralBlend.value = 0.0;
 
   // --- Periodic sun/moon direction update ---
   const now = Date.now();

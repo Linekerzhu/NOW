@@ -26,15 +26,6 @@ export const CONFIG = {
     segments: [96, 48],
   },
 
-  ocean: {
-    segments: [256, 128],
-    seaLevel: 0.07,
-    deepColor: [0.0, 0.01, 0.03],
-    shallowColor: [0.0, 0.15, 0.12],
-    maxDepth: 0.3,
-    opacity: 0.92,
-  },
-
   aurora: {
     heightFactor: 1.025,
     segments: [96, 48],

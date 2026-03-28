@@ -274,7 +274,6 @@ export async function initDevGUI({
   earthFolder.add(earthUniforms.ambientDim, 'value', 0, 0.5, 0.01).name('day dimming');
   earthFolder.add(earthUniforms.normalStrength, 'value', 0, 10, 0.1).name('normal strength');
   earthFolder.add(earthUniforms.displacementScale, 'value', 0, 5, 0.01).name('displacement scale');
-  earthFolder.add(earthUniforms.proceduralBlend, 'value', 0, 1, 0.01).name('procedural blend');
 
   // ==== Clouds ====
   const cloudUniforms = clouds.object3D.material.uniforms;
