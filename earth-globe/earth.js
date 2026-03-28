@@ -173,6 +173,9 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
     /** Access material for external uniform control */
     material,
 
+    /** Shared textures for other components (ocean, etc.) */
+    textures: { specular: specularTex, height: heightTex },
+
     update(ctx) {
       material.uniforms.sunDirection.value.copy(ctx.sunDirection);
       material.uniforms.sunIntensity.value = ctx.sunIntensity;

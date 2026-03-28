@@ -137,8 +137,8 @@ const ocean = createOcean({
   config: CONFIG.ocean,
   earthRadius,
   cameraPosition: camera.position,
-  specularTex: earth.material.uniforms.specularMap.value,
-  heightTex: earth.material.uniforms.heightMap.value,
+  specularTex: earth.textures.specular,
+  heightTex: earth.textures.height,
 });
 
 // Set initial moon position
