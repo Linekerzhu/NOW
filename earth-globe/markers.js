@@ -36,8 +36,11 @@ export function createMarker(lat, lon, earthGroup, options = {}) {
   const focalLength = options.focalLength ?? BASE_FOCAL_LENGTH;
   const priority = options.priority ?? 'normal';
 
-  // Scale inversely with focal length so markers stay visually consistent
-  const scale = BASE_FOCAL_LENGTH / focalLength;
+  // Scale inversely with focal length SQUARED to account for both
+  // narrower FOV and closer camera distance at high zoom levels.
+  // L1 (37mm): scale=1.0, L2 (200mm): scale=0.034, L3 (250mm): scale=0.022
+  const ratio = BASE_FOCAL_LENGTH / focalLength;
+  const scale = ratio * ratio;
   const stalkHeight = BASE_STALK_HEIGHT * scale;
   const anchorSize = BASE_ANCHOR_SIZE * scale;
   const markerColor = priority === 'high' ? COLOR_HIGH : COLOR_NORMAL;

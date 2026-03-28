@@ -106,12 +106,10 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
       // 1. Update HUD
       updateHUDLevel(level, config);
 
-      // Adjust China province boundaries opacity by level
+      // Adjust boundary visibility by level — only show relevant layer
       if (boundaryLines.china) {
-        const chinaOpacity = { L1: 0.12, L2: 0.06, L3: 0.03 }[level] ?? 0.08;
-        gsap.to(boundaryLines.china.material, {
-          opacity: chinaOpacity, duration: 1.0, ease: 'power2.out',
-        });
+        const chinaOpacity = { L1: 0.12, L2: 0.0, L3: 0.0 }[level] ?? 0.08;
+        gsap.to(boundaryLines.china.material, { opacity: chinaOpacity, duration: 0.8 });
       }
 
       // Update overlay container level class for card sizing
