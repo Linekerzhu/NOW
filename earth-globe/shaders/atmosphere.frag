@@ -123,5 +123,15 @@ void main() {
   // Final scattered light = sun illumination × accumulated scattering
   vec3 scatter = (totalR * betaR * phaseR + totalM * betaM * phaseM) * sunIntensity;
 
+  // Suppress scatter over the surface, keep at the limb.
+  // Short paths (center view, ~0.6 units) produce visible haze;
+  // long paths (limb, ~7 units) produce the desired glow.
+  if (planetHit.x > 0.0) {
+    float pathLength = pathEnd - pathStart;
+    float maxPath = 2.0 * sqrt(atmosphereRadius * atmosphereRadius - earthRadius * earthRadius);
+    float limbness = smoothstep(0.0, 0.6, pathLength / maxPath);
+    scatter *= limbness;
+  }
+
   gl_FragColor = vec4(scatter, 1.0);
 }
