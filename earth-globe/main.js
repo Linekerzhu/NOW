@@ -284,11 +284,11 @@ function animate() {
   ctx.cloudUVOffset = clouds.cloudUVOffset;  // read current value before loop
 
     // --- Distance-adaptive terrain exaggeration ---
-    // Max safe: ~5.7x (vertex spacing 0.123 / peak displacement 0.0139)
-    // Beyond this, triangles fold and flicker. Phase 4 LOD will allow more.
+    // Max safe: ~4x at current 512-segment geometry.
+    // Higher causes triangle folding → flicker. Phase 4 LOD will allow more.
     const camDist = camera.position.length();
     const distRatio = camDist / earthRadius;
-    const exaggeration = THREE.MathUtils.lerp(1.5, 5.0,
+    const exaggeration = THREE.MathUtils.lerp(1.5, 4.0,
       THREE.MathUtils.smoothstep(distRatio, 1.25, 1.55));
     const dispScale = exaggeration * earthRadius * 0.001389;
     earth.material.uniforms.displacementScale.value = dispScale;
