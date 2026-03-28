@@ -291,7 +291,8 @@ function animate() {
 
     // LOD with hysteresis + cooldown to prevent damping-induced oscillation
     if (!animate._lodCooldown) animate._lodCooldown = 0;
-    if (now > animate._lodCooldown) {
+    const lodNow = Date.now();
+    if (lodNow > animate._lodCooldown) {
       const curLODIdx = earth.lodSegments[0] === 1024 ? 2 : earth.lodSegments[0] === 512 ? 1 : 0;
       let newLOD = curLODIdx;
       if (curLODIdx === 0 && distRatio < 1.25) newLOD = 1;
@@ -300,7 +301,7 @@ function animate() {
       if (curLODIdx === 2 && distRatio > 1.20) newLOD = 1;
       if (newLOD !== curLODIdx) {
         earth.setLOD(newLOD);
-        animate._lodCooldown = now + 500; // 500ms cooldown
+        animate._lodCooldown = lodNow + 500; // 500ms cooldown
       }
     }
 
