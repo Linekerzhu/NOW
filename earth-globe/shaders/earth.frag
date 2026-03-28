@@ -197,5 +197,11 @@ void main() {
   color *= dimFactor;
   color = mix(color, color * vec3(0.93, 0.96, 1.0), terminator * 0.2);
 
+  // Guard against NaN from degenerate tangent interpolation — NaN in
+  // HalfFloat render targets renders as black.  NaN != NaN is true in GLSL.
+  if (color.r != color.r) color.r = 0.0;
+  if (color.g != color.g) color.g = 0.0;
+  if (color.b != color.b) color.b = 0.0;
+
   gl_FragColor = vec4(color + _keepAlive, 1.0);
 }
