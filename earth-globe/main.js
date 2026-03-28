@@ -289,14 +289,20 @@ function animate() {
     const camDist = camera.position.length();
     const distRatio = camDist / earthRadius;
 
-    // LOD with hysteresis (up/down thresholds differ to prevent oscillation)
-    const curLODIdx = earth.lodSegments[0] === 1024 ? 2 : earth.lodSegments[0] === 512 ? 1 : 0;
-    let newLOD = curLODIdx;
-    if (curLODIdx === 0 && distRatio < 1.28) newLOD = 1;
-    if (curLODIdx === 1 && distRatio < 1.12) newLOD = 2;
-    if (curLODIdx === 1 && distRatio > 1.33) newLOD = 0;
-    if (curLODIdx === 2 && distRatio > 1.18) newLOD = 1;
-    earth.setLOD(newLOD);
+    // LOD with hysteresis + cooldown to prevent damping-induced oscillation
+    if (!animate._lodCooldown) animate._lodCooldown = 0;
+    if (now > animate._lodCooldown) {
+      const curLODIdx = earth.lodSegments[0] === 1024 ? 2 : earth.lodSegments[0] === 512 ? 1 : 0;
+      let newLOD = curLODIdx;
+      if (curLODIdx === 0 && distRatio < 1.25) newLOD = 1;
+      if (curLODIdx === 1 && distRatio < 1.10) newLOD = 2;
+      if (curLODIdx === 1 && distRatio > 1.35) newLOD = 0;
+      if (curLODIdx === 2 && distRatio > 1.20) newLOD = 1;
+      if (newLOD !== curLODIdx) {
+        earth.setLOD(newLOD);
+        animate._lodCooldown = now + 500; // 500ms cooldown
+      }
+    }
 
     // Terrain exaggeration: higher at far view, lower at close
     const exaggeration = THREE.MathUtils.lerp(1.0, 2.5,
