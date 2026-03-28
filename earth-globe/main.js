@@ -287,17 +287,23 @@ function animate() {
     const camDist = camera.position.length();
     const distRatio = camDist / earthRadius;
 
-    // LOD: switch geometry resolution based on distance
-    //   LOD 2 (1024×512) — close (L3), vertex spacing ~0.061 → safe up to ~4.4x
-    //   LOD 1 (512×256)  — medium (L2), vertex spacing ~0.123 → safe up to ~2.2x
-    //   LOD 0 (256×128)  — far (L1), vertex spacing ~0.245 → safe up to ~1.5x
-    const lod = distRatio < 1.35 ? 2 : distRatio < 1.48 ? 1 : 0;
-    earth.setLOD(lod);
+    // LOD: switch geometry resolution with hysteresis to prevent oscillation.
+    // Higher segments = finer terrain detail, NOT higher exaggeration.
+    //   LOD 2 (1024×512) — close (L3): finest terrain detail
+    //   LOD 1 (512×256)  — medium (L2)
+    //   LOD 0 (256×128)  — far (L1): coarsest, best performance
+    const lodUpThresholds   = [999, 1.46, 1.33];  // switch UP to this LOD when below
+    const lodDownThresholds = [1.52, 1.38, 0];     // switch DOWN from this LOD when above
+    const curLOD = earth.lodSegments;
+    const curLODIdx = curLOD[0] === 1024 ? 2 : curLOD[0] === 512 ? 1 : 0;
+    let newLOD = curLODIdx;
+    if (curLODIdx < 2 && distRatio < lodUpThresholds[curLODIdx + 1]) newLOD = curLODIdx + 1;
+    if (curLODIdx > 0 && distRatio > lodDownThresholds[curLODIdx]) newLOD = curLODIdx - 1;
+    earth.setLOD(newLOD);
 
-    // Exaggeration scaled per-LOD to stay within safe vertex spacing
-    const maxExag = [2.5, 4.0, 8.0][lod];
-    const minExag = [1.0, 1.5, 2.0][lod];
-    const exaggeration = THREE.MathUtils.lerp(minExag, maxExag,
+    // Terrain exaggeration: constant safe value regardless of LOD.
+    // ~2.5x keeps displacement within vertex spacing at all LOD levels.
+    const exaggeration = THREE.MathUtils.lerp(1.0, 2.5,
       THREE.MathUtils.smoothstep(distRatio, 1.25, 1.55));
     const dispScale = exaggeration * earthRadius * 0.001389;
     earth.material.uniforms.displacementScale.value = dispScale;
