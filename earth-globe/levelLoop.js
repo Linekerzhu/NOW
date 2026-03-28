@@ -14,9 +14,10 @@ const LEVEL_ORDER = ['L1', 'L2', 'L3'];
 
 // Pre-loaded boundary line objects
 const boundaryLines = {
-  china: null,      // 全国省界 + 九段线
-  shanghai: null,
-  jinshan: null,
+  china: null,        // 全国省界 + 九段线
+  shanghai: null,     // 上海各区
+  jinshan: null,      // 金山区轮廓
+  jinshanTowns: null, // 金山区镇/街道
 };
 
 // Abort controller for interrupting current level
@@ -42,17 +43,21 @@ const LEVEL_REGIONS = {
 export async function initLevelLoop(earthGroup, earth) {
   earthObj = earth;
   try {
-    const [china, shanghai, jinshan] = await Promise.all([
+    const [china, shanghai, jinshan, jinshanTowns] = await Promise.all([
       loadBoundaries('/geo/china-provinces.json', earthGroup, {
-        color: 0x88ccff,       // 淡蓝色省界线
-        initialOpacity: 0.08,  // 常驻微弱显示
+        color: 0x88ccff,
+        initialOpacity: 0.08,
       }),
       loadBoundaries('/geo/shanghai-districts.json', earthGroup),
       loadBoundaries('/geo/jinshan.json', earthGroup),
+      loadBoundaries('/geo/jinshan-towns.json', earthGroup, {
+        color: 0xffcc44,  // 金色镇界线
+      }),
     ]);
     boundaryLines.china = china;
     boundaryLines.shanghai = shanghai;
     boundaryLines.jinshan = jinshan;
+    boundaryLines.jinshanTowns = jinshanTowns;
     console.info('[LevelLoop] Boundaries pre-loaded');
   } catch (err) {
     console.warn('[LevelLoop] Failed to load boundaries:', err);
@@ -131,6 +136,10 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
       if (bKey && boundaryLines[bKey]) {
         showBoundaries(boundaryLines[bKey]);
       }
+      // Show Jinshan towns at L3
+      if (level === 'L3' && boundaryLines.jinshanTowns) {
+        showBoundaries(boundaryLines.jinshanTowns);
+      }
 
       // 3b. Activate regional overlay textures
       const regions = LEVEL_REGIONS[level];
@@ -166,6 +175,9 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
       // 7. Hide boundaries & regional overlays
       if (bKey && boundaryLines[bKey]) {
         hideBoundaries(boundaryLines[bKey]);
+      }
+      if (boundaryLines.jinshanTowns) {
+        hideBoundaries(boundaryLines.jinshanTowns);
       }
       // Fade out regional overlays
       if (earthObj && regions) {
