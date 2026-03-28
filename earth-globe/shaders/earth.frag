@@ -18,6 +18,7 @@ uniform float nightBrightness;
 uniform float cityLightBoost;
 uniform sampler2D heightMap;
 uniform float displacementScale;
+uniform float proceduralBlend;  // 0.0 = satellite only, 0.3-0.5 at close zoom
 
 // --- Regional LOD overlays ---
 uniform sampler2D regionDayTex1;       // Shanghai high-res day
@@ -62,6 +63,50 @@ vec4 sampleRegion(sampler2D regionTex, vec4 bounds, float opacity, vec2 uv) {
   return vec4(color, weight);
 }
 
+/**
+ * Procedural biome coloring from altitude, latitude, and slope.
+ * Blended with satellite texture at close zoom for extra detail.
+ */
+vec3 proceduralBiome(float height, float slope, float latitude) {
+  // Snow line: lower at higher latitudes
+  float snowLine = mix(0.85, 0.3, smoothstep(0.4, 1.2, latitude));
+  float snowAmount = smoothstep(snowLine - 0.05, snowLine + 0.05, height);
+  snowAmount *= (1.0 - smoothstep(0.3, 0.7, slope)); // no snow on cliffs
+
+  // Rock on steep slopes
+  float rockAmount = smoothstep(0.3, 0.6, slope);
+
+  // Vegetation band (low-mid altitude, low latitude, moderate slope)
+  float vegBand = smoothstep(0.05, 0.15, height)
+                * smoothstep(0.5, 0.15, height)
+                * (1.0 - smoothstep(0.8, 1.3, latitude))
+                * (1.0 - smoothstep(0.2, 0.5, slope));
+
+  // Desert/arid at low altitude + mid latitude
+  float desertBand = smoothstep(0.03, 0.12, height)
+                   * smoothstep(0.3, 0.12, height)
+                   * smoothstep(0.15, 0.4, latitude)
+                   * (1.0 - smoothstep(0.6, 0.9, latitude));
+
+  // Color palette
+  vec3 snowColor  = vec3(0.92, 0.94, 0.98);
+  vec3 rockColor  = vec3(0.38, 0.33, 0.28);
+  vec3 vegColor   = vec3(0.18, 0.32, 0.10);
+  vec3 sandColor  = vec3(0.72, 0.65, 0.48);
+  vec3 dirtColor  = vec3(0.42, 0.36, 0.26);
+  vec3 shoreColor = vec3(0.58, 0.55, 0.42);
+
+  // Layer biomes
+  vec3 base = dirtColor;
+  base = mix(base, shoreColor, smoothstep(0.0, 0.06, height) * (1.0 - vegBand));
+  base = mix(base, sandColor, desertBand * 0.7);
+  base = mix(base, vegColor, vegBand);
+  base = mix(base, rockColor, rockAmount);
+  base = mix(base, snowColor, snowAmount);
+
+  return base;
+}
+
 void main() {
   // Force ALL sampler2D uniforms to be "alive" to prevent GLSL dead-code
   // elimination, which would cause Three.js to not assign texture units.
@@ -89,6 +134,15 @@ void main() {
   // --- Sample textures ---
   vec3 dayColor = texture2D(dayTexture, vUv).rgb;
   vec3 nightColor = texture2D(nightTexture, vUv).rgb;
+
+  // --- Procedural biome blending ---
+  if (proceduralBlend > 0.01) {
+    float h = texture2D(heightMap, vUv).r;
+    float slope = 1.0 - abs(dot(N, normalize(vWorldPosition)));
+    float latitude = abs(asin(normalize(vWorldPosition).y));
+    vec3 biomeColor = proceduralBiome(h, slope, latitude);
+    dayColor = mix(dayColor, biomeColor, proceduralBlend);
+  }
 
   // --- Regional LOD overlay (day only) ---
   vec4 r1 = sampleRegion(regionDayTex1, regionBounds1, regionOpacity1, vUv);

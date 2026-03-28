@@ -134,6 +134,7 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
       heightMap: { value: heightTex },
       displacementScale: { value: (config.displacementScale ?? 0.01) * earthRadius },
       heightMapSize: { value: new THREE.Vector2(5400, 2700) },
+      proceduralBlend: { value: 0.0 },
     },
   });
 
