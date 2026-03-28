@@ -16,8 +16,6 @@ uniform float twilightIntensity;
 uniform float blueHourIntensity;
 uniform float nightBrightness;
 uniform float cityLightBoost;
-uniform sampler2D specularMap;
-uniform float hasSpecularMap;
 uniform sampler2D heightMap;
 uniform float displacementScale;
 
@@ -72,7 +70,6 @@ void main() {
   float _keepAlive = 0.0;
   _keepAlive += texture2D(regionDayTex1, vec2(0.5)).r * 0.0001;
   _keepAlive += texture2D(regionDayTex2, vec2(0.5)).r * 0.0001;
-  _keepAlive += texture2D(specularMap, vec2(0.5)).r * 0.0001;
   _keepAlive += texture2D(heightMap, vec2(0.5)).r * 0.0001;
 
   vec3 N = normalize(vNormal);
@@ -207,51 +204,6 @@ void main() {
   // --- Twilight warm atmospheric scattering ---
   float twilightBand = smoothstep(-0.2, 0.0, sunDot) * smoothstep(0.2, 0.0, sunDot);
   color += vec3(0.15, 0.08, 0.03) * twilightBand * twilightIntensity;
-
-  // === OCEAN SUN GLINT ===
-  float oceanMask;
-  if (hasSpecularMap > 0.5) {
-    // Soften the binary specular map at coastlines to avoid harsh edges
-    float rawSpec = texture2D(specularMap, vUv).r;
-    oceanMask = smoothstep(0.1, 0.5, rawSpec);
-  } else {
-    float luminance = dot(dayColor, vec3(0.299, 0.587, 0.114));
-    float blueRatio = dayColor.b / (luminance + 0.01);
-    oceanMask = smoothstep(0.18, 0.08, luminance) * smoothstep(1.1, 1.5, blueRatio);
-  }
-
-  // Subtle ocean darkening for specular contrast (0.92 = gentle)
-  color *= mix(1.0, 0.92, oceanMask * terminator);
-
-  // Animated micro-ripple: subtle normal perturbation in ocean areas
-  float ripple1 = noise(vUv.x * 800.0 + time * 2.0) * 0.5 + 0.5;
-  float ripple2 = noise(vUv.y * 600.0 - time * 1.5 + 100.0) * 0.5 + 0.5;
-  vec3 rippleNormal = normalize(perturbedNormal + vec3(ripple1 - 0.5, ripple2 - 0.5, 0.0) * 0.015 * oceanMask);
-
-  vec3 halfDir = normalize(sunDir + viewDir);
-  float NdotH = max(dot(rippleNormal, halfDir), 0.0);
-  float VdotH = max(dot(viewDir, halfDir), 0.0);
-
-  // GGX (Trowbridge-Reitz) NDF — two roughness layers for realistic sun glint
-  // Sharp core (roughness 0.12) + wide haze (roughness 0.4) for natural falloff
-  float NdotH2 = NdotH * NdotH;
-
-  float a2_sharp = 0.12 * 0.12;
-  float d_sharp = a2_sharp / (3.14159 * pow(NdotH2 * (a2_sharp - 1.0) + 1.0, 2.0));
-
-  float a2_wide = 0.4 * 0.4;
-  float d_wide = a2_wide / (3.14159 * pow(NdotH2 * (a2_wide - 1.0) + 1.0, 2.0));
-
-  // Schlick Fresnel for water (IOR 1.33 → F0 = 0.02)
-  float F = 0.02 + 0.98 * pow(1.0 - VdotH, 5.0);
-
-  vec3 glintColor = vec3(1.0, 0.95, 0.85);
-  color += glintColor * (d_sharp * 1.8 + d_wide * 0.3) * F * oceanMask * terminator;
-
-  // Fresnel-boosted ocean sky reflection
-  float oceanFresnel = pow(fresnelFactor(viewDir, N), 4.0);
-  vec3 skyReflectColor = vec3(0.15, 0.25, 0.45);
-  color += skyReflectColor * oceanFresnel * oceanMask * terminator * 0.25;
 
   // --- Fresnel rim ---
   color += vec3(0.12, 0.18, 0.28) * pow(viewFresnel, 4.0) * terminator * 0.3;
