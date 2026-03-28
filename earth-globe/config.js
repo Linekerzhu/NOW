@@ -22,7 +22,7 @@ export const CONFIG = {
   },
 
   atmosphere: {
-    heightFactor: 1.06,
+    heightFactor: 1.12,
     segments: [96, 48],
   },
 
