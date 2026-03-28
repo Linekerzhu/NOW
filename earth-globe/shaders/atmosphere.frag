@@ -6,7 +6,7 @@
  * sunset/sunrise colors, and correct horizon glow from physics.
  *
  * Based on Nishita's model, adapted from wwwtyro/glsl-atmosphere.
- * Uses 8 primary + 4 light steps — affordable for real-time.
+ * Uses 16 primary + 6 light steps — affordable for real-time.
  */
 
 uniform vec3 cameraPos;

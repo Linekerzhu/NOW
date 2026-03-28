@@ -179,9 +179,9 @@ void main() {
   // === CLOUD SHADOWS ===
   float cloudHeight = 0.003;
 
-  float sunTangent = dot(sunDir, T);
-  float sunBitangent = dot(sunDir, B);
-  vec2 shadowOffset = vec2(-sunTangent, -sunBitangent) * cloudHeight;
+  float sunTangentProj = dot(sunDir, T);
+  float sunBitangentProj = dot(sunDir, B);
+  vec2 shadowOffset = vec2(-sunTangentProj, -sunBitangentProj) * cloudHeight;
 
   float cloudDensity = texture2D(cloudTexture, vec2(fract(vUv.x - cloudUVOffset), vUv.y) + shadowOffset).r;
 
