@@ -21,6 +21,7 @@ import { initHUD, setupLevelButtons } from './hud.js';
 import { loadNewsData } from './data.js';
 import { initLevelLoop, startDisplayLoop } from './levelLoop.js';
 import { LEVEL_ORBITS } from './camera.js';
+import { createOcean } from './ocean.js';
 
 // ============================================================================
 //  [Improvement #5] WebGL compatibility detection
@@ -132,6 +133,14 @@ const stars      = createStars({ config: CONFIG.stars });
 const moon       = createMoon({ config: CONFIG.moon, earthRadius, cameraPosition: camera.position });
 const sun        = createSun({ config: CONFIG.sun, earthRadius });
 
+const ocean = createOcean({
+  config: CONFIG.ocean,
+  earthRadius,
+  cameraPosition: camera.position,
+  specularTex: earth.material.uniforms.specularMap.value,
+  heightTex: earth.material.uniforms.heightMap.value,
+});
+
 // Set initial moon position
 moon.setPosition(new Date());
 
@@ -139,6 +148,7 @@ moon.setPosition(new Date());
 // earthGroup gets oblate scaling; scene-level objects do not.
 earthGroup.add(clouds.object3D);
 earthGroup.add(earth.object3D);
+earthGroup.add(ocean.object3D);
 earthGroup.add(aurora.object3D);
 earthGroup.add(atmosphere.object3D);
 scene.add(stars.object3D);
@@ -146,7 +156,7 @@ scene.add(moon.object3D);
 scene.add(sun.object3D);
 
 // Components in update order (clouds before earth for cloudUVOffset sync)
-const components = [clouds, earth, atmosphere, aurora, stars, moon, sun];
+const components = [clouds, earth, ocean, atmosphere, aurora, stars, moon, sun];
 
 
 // --- Weather system ---
