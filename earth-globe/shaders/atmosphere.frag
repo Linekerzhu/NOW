@@ -18,8 +18,8 @@ uniform float sunIntensity;
 varying vec3 vWorldPosition;
 
 #define PI 3.14159265
-#define PRIMARY_STEPS 8
-#define LIGHT_STEPS 4
+#define PRIMARY_STEPS 16
+#define LIGHT_STEPS 6
 
 // Ray-sphere intersection: returns (near, far) distances along ray.
 // Sphere centered at origin. Returns vec2(-1) if no intersection.
