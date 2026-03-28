@@ -16,6 +16,8 @@ uniform float twilightIntensity;
 uniform float blueHourIntensity;
 uniform float nightBrightness;
 uniform float cityLightBoost;
+uniform sampler2D specularMap;
+uniform float hasSpecularMap;
 
 // --- Regional LOD overlays ---
 uniform sampler2D regionDayTex1;       // Shanghai high-res day
@@ -68,6 +70,7 @@ void main() {
   float _keepAlive = 0.0;
   _keepAlive += texture2D(regionDayTex1, vec2(0.5)).r * 0.0001;
   _keepAlive += texture2D(regionDayTex2, vec2(0.5)).r * 0.0001;
+  _keepAlive += texture2D(specularMap, vec2(0.5)).r * 0.0001;
 
   vec3 N = normalize(vNormal);
   vec3 T = normalize(vTangent);
@@ -163,9 +166,14 @@ void main() {
   color += vec3(0.15, 0.08, 0.03) * twilightBand * twilightIntensity;
 
   // === OCEAN SUN GLINT ===
-  float luminance = dot(dayColor, vec3(0.299, 0.587, 0.114));
-  float blueRatio = dayColor.b / (luminance + 0.01);
-  float oceanMask = smoothstep(0.18, 0.08, luminance) * smoothstep(1.1, 1.5, blueRatio);
+  float oceanMask;
+  if (hasSpecularMap > 0.5) {
+    oceanMask = texture2D(specularMap, vUv).r;
+  } else {
+    float luminance = dot(dayColor, vec3(0.299, 0.587, 0.114));
+    float blueRatio = dayColor.b / (luminance + 0.01);
+    oceanMask = smoothstep(0.18, 0.08, luminance) * smoothstep(1.1, 1.5, blueRatio);
+  }
 
   // Darken ocean base for contrast with specular
   color *= mix(1.0, 0.85, oceanMask * terminator);
@@ -176,13 +184,20 @@ void main() {
   vec3 rippleNormal = normalize(perturbedNormal + vec3(ripple1 - 0.5, ripple2 - 0.5, 0.0) * 0.015 * oceanMask);
 
   vec3 halfDir = normalize(sunDir + viewDir);
-  float specAngle = max(dot(rippleNormal, halfDir), 0.0);
-  float specular = pow(specAngle, 150.0);
-  float specularMid = pow(specAngle, 40.0);
-  float specularWide = pow(specAngle, 12.0);
+  float NdotH = max(dot(rippleNormal, halfDir), 0.0);
+  float VdotH = max(dot(viewDir, halfDir), 0.0);
+
+  // GGX (Trowbridge-Reitz) NDF — realistic long-tail sun glint
+  float roughness = 0.15;
+  float a2 = roughness * roughness;
+  float denom = NdotH * NdotH * (a2 - 1.0) + 1.0;
+  float D_GGX = a2 / (3.14159 * denom * denom);
+
+  // Schlick Fresnel for water (IOR 1.33 → F0 = 0.02)
+  float F = 0.02 + 0.98 * pow(1.0 - VdotH, 5.0);
 
   vec3 glintColor = vec3(1.0, 0.95, 0.85);
-  color += glintColor * (specular * 1.5 + specularMid * 0.35 + specularWide * 0.08) * oceanMask * terminator;
+  color += glintColor * D_GGX * F * oceanMask * terminator;
 
   // Fresnel-boosted ocean sky reflection
   float oceanFresnel = pow(fresnelFactor(viewDir, N), 4.0);
