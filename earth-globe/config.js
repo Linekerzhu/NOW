@@ -81,7 +81,7 @@ export const CONFIG = {
   },
 
   renderer: {
-    toneMappingExposure: 1.0,
+    toneMappingExposure: 1.2,    // AgX needs slight boost vs ACES
   },
 
   animation: {
