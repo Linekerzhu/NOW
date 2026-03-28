@@ -2,6 +2,7 @@
 
 uniform sampler2D heightMap;
 uniform float displacementScale;
+uniform vec2 heightMapSize;
 
 varying vec3 vNormal;
 varying vec2 vUv;
@@ -18,7 +19,7 @@ void main() {
 
   // --- Compute displaced normal via finite differences ---
   // Sample neighboring heights to derive tangent-space slope
-  vec2 texelSize = vec2(1.0 / 5400.0, 1.0 / 2700.0);
+  vec2 texelSize = 1.0 / heightMapSize;
   float hL = texture2D(heightMap, uv - vec2(texelSize.x, 0.0)).r;
   float hR = texture2D(heightMap, uv + vec2(texelSize.x, 0.0)).r;
   float hD = texture2D(heightMap, uv - vec2(0.0, texelSize.y)).r;
