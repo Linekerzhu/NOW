@@ -40,6 +40,10 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
   const cloudTex = textureLoader.load(textureConfig.clouds);
   const heightTex = textureLoader.load(textureConfig.heightmap);
 
+  const specularTex = textureConfig.specular
+    ? textureLoader.load(textureConfig.specular)
+    : null;
+
   dayTex.colorSpace = THREE.SRGBColorSpace;
   nightTex.colorSpace = THREE.SRGBColorSpace;
   normalTex.colorSpace = THREE.LinearSRGBColorSpace;
@@ -52,6 +56,11 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
   dayTex.anisotropy = maxAniso;
   nightTex.anisotropy = maxAniso;
   normalTex.anisotropy = maxAniso;
+
+  if (specularTex) {
+    specularTex.colorSpace = THREE.LinearSRGBColorSpace;
+    specularTex.anisotropy = maxAniso;
+  }
 
   const [segW, segH] = config.segments;
   const geometry = new THREE.SphereGeometry(earthRadius, segW, segH);
@@ -124,6 +133,8 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
       regionBounds2: { value: jinshanUVBounds },
       regionOpacity1: { value: 0.0 },
       regionOpacity2: { value: 0.0 },
+      specularMap: { value: specularTex },
+      hasSpecularMap: { value: specularTex ? 1.0 : 0.0 },
     },
   });
 
