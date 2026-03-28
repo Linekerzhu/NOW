@@ -29,7 +29,7 @@ export function createAtmosphere({ config, earthRadius, cameraPosition }) {
       sunDirection: { value: new THREE.Vector3(1, 0, 0) },
       earthRadius: { value: earthRadius },
       atmosphereRadius: { value: atmosRadius },
-      sunIntensity: { value: 20.0 },
+      sunIntensity: { value: 2.0 },
     },
     side: THREE.BackSide,
     transparent: true,
@@ -45,7 +45,7 @@ export function createAtmosphere({ config, earthRadius, cameraPosition }) {
 
     update(ctx) {
       material.uniforms.sunDirection.value.copy(ctx.sunDirection);
-      material.uniforms.sunIntensity.value = 20.0 * ctx.sunIntensity;
+      material.uniforms.sunIntensity.value = 2.0 * ctx.sunIntensity;
     },
 
     dispose() {
