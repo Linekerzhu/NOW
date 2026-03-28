@@ -10,7 +10,7 @@ export const CONFIG = {
     oblateness: 0.9966,
     ambientDim: 0.08,
     normalStrength: 2.3,
-    displacementScale: 0.015,
+    displacementScale: 0.01,
   },
 
   clouds: {
