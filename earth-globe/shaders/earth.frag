@@ -18,6 +18,8 @@ uniform float nightBrightness;
 uniform float cityLightBoost;
 uniform sampler2D specularMap;
 uniform float hasSpecularMap;
+uniform sampler2D heightMap;
+uniform float displacementScale;
 
 // --- Regional LOD overlays ---
 uniform sampler2D regionDayTex1;       // Shanghai high-res day
@@ -71,6 +73,7 @@ void main() {
   _keepAlive += texture2D(regionDayTex1, vec2(0.5)).r * 0.0001;
   _keepAlive += texture2D(regionDayTex2, vec2(0.5)).r * 0.0001;
   _keepAlive += texture2D(specularMap, vec2(0.5)).r * 0.0001;
+  _keepAlive += texture2D(heightMap, vec2(0.5)).r * 0.0001;
 
   vec3 N = normalize(vNormal);
   vec3 T = normalize(vTangent);
@@ -127,9 +130,41 @@ void main() {
   float blueHourBand = smoothstep(-0.22, -0.10, sunDot) * smoothstep(-0.03, -0.10, sunDot);
   color += vec3(0.04, 0.06, 0.14) * blueHourBand * blueHourIntensity;
 
+  // --- Heightmap self-shadowing ---
+  // March along sun direction in UV space to check if nearby terrain
+  // occludes direct sunlight (mountain shadow casting)
+  float selfShadow = 1.0;
+  if (terminator > 0.01) {
+    float currentHeight = texture2D(heightMap, vUv).r;
+
+    // Project sun direction onto tangent plane → UV step direction
+    vec2 sunUV = vec2(dot(sunDir, T), dot(sunDir, B));
+    float sunUVLen = length(sunUV);
+    if (sunUVLen > 0.001) {
+      sunUV /= sunUVLen;
+      // Step size: ~3 texels per step (heightmap ~5400 wide)
+      vec2 texelStep = sunUV * (3.0 / 5400.0);
+      // Sun elevation relative to surface — low sun = longer shadows
+      float sunElevation = max(dot(sunDir, N), 0.001);
+
+      for (int s = 1; s <= 8; s++) {
+        vec2 sampleUV = vUv + texelStep * float(s);
+        float sampleHeight = texture2D(heightMap, sampleUV).r;
+        // Height threshold: how high must neighbor be to cast shadow here?
+        // Uses sun elevation angle: low sun → even small hills cast far shadows
+        float threshold = currentHeight + sunElevation * float(s) * 0.15;
+        if (sampleHeight > threshold) {
+          // Soft shadow with distance falloff
+          selfShadow = 1.0 - smoothstep(0.0, 0.03, sampleHeight - threshold);
+          break;
+        }
+      }
+    }
+  }
+
   // --- Day-side diffuse with normal map ---
   float diffuse = max(sunDotBumped, 0.0);
-  color *= mix(1.0, 0.7 + 0.3 * diffuse, terminator);
+  color *= mix(1.0, (0.6 + 0.4 * diffuse) * mix(1.0, selfShadow, 0.5), terminator);
 
   // Apply orbital eccentricity
   color *= mix(1.0, sunIntensity, terminator);

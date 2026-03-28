@@ -135,6 +135,8 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
       regionOpacity2: { value: 0.0 },
       specularMap: { value: specularTex },
       hasSpecularMap: { value: specularTex ? 1.0 : 0.0 },
+      heightMap: { value: heightTex },
+      displacementScale: { value: (config.displacementScale ?? 0.01) * earthRadius },
     },
   });
 
