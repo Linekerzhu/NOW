@@ -20,8 +20,11 @@ export function createEarth({ config, textureConfig, surfaceConfig, earthRadius,
 
   // --- Day texture: tiled progressive loading (16K) with 8K placeholder ---
   const tileConfig = textureConfig.dayTiles;
+  // Use half the GPU max texture size to avoid GPU memory exhaustion.
+  // A 16384×8192 canvas = 537MB per upload — exceeds VRAM budgets on
+  // many GPUs and causes partially-initialized textures (black rectangles).
   const gpuMaxTex = renderer
-    ? renderer.capabilities.maxTextureSize
+    ? Math.floor(renderer.capabilities.maxTextureSize / 2)
     : 8192;
   const tiledDay = createTiledTexture({
     basePath: tileConfig.basePath,
