@@ -131,11 +131,11 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
 
       // 3. Show boundaries per level
       const bKey = config.showBoundaries;
-      if (level === 'L3') {
-        // L3: only show town boundaries (their outer edges form the district outline)
-        if (boundaryLines.jinshanTowns) showBoundaries(boundaryLines.jinshanTowns);
-      } else if (bKey && boundaryLines[bKey]) {
+      if (bKey && boundaryLines[bKey]) {
         showBoundaries(boundaryLines[bKey]);
+      }
+      if (level === 'L3' && boundaryLines.jinshanTowns) {
+        showBoundaries(boundaryLines.jinshanTowns);
       }
 
       // 3b. Activate regional overlay textures
