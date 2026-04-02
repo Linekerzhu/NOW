@@ -8,7 +8,7 @@ import gsap from 'gsap';
 import { flyToLevel, LEVEL_ORBITS } from './camera.js';
 import { showNewsSequence } from './cardLifecycle.js';
 import { loadBoundaries, showBoundaries, hideBoundaries } from './boundaries.js';
-import { updateHUDLevel } from './hud.js';
+import { updateHUDLevel, updateSidePanel } from './hud.js';
 
 const LEVEL_ORDER = ['L1', 'L2', 'L3'];
 
@@ -103,8 +103,9 @@ export async function startDisplayLoop(newsData, camera, controls, bloomPass, an
     const { signal } = abortController;
 
     try {
-      // 1. Update HUD
+      // 1. Update HUD + side panel
       updateHUDLevel(level, config);
+      updateSidePanel(level, items.length);
 
       // Adjust boundary visibility by level — only show relevant layer
       if (boundaryLines.china) {

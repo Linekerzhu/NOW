@@ -57,7 +57,7 @@ export async function loadBoundaries(url, earthGroup, options = {}) {
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 
   const material = new THREE.LineBasicMaterial({
-    color: options.color ?? 0x00ff00,
+    color: options.color ?? 0x38bdf8,
     transparent: true,
     opacity: options.initialOpacity ?? 0,
     depthWrite: false,

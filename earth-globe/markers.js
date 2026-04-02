@@ -10,11 +10,11 @@ const BASE_STALK_HEIGHT = 1.2;
 /** Base anchor size at reference focal length */
 const BASE_ANCHOR_SIZE = 0.06;
 
-/** Default marker color (normal priority) */
-const COLOR_NORMAL = 0x00dd00;
+/** Default marker color (normal priority — cyan) */
+const COLOR_NORMAL = 0x00e5ff;
 
-/** High priority marker color */
-const COLOR_HIGH = 0xff3300;
+/** High priority marker color (signal red) */
+const COLOR_HIGH = 0xf87171;
 
 /**
  * 创建球面锚点 + 标注杆，加为 earthGroup 的子对象。

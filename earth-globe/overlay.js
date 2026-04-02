@@ -43,7 +43,17 @@ export function createInfoCard(data) {
 
   const meta = document.createElement('div');
   meta.className = 'info-card__meta';
-  meta.textContent = `[${data.source}]  ${data.time}`;
+
+  const sourceBadge = document.createElement('span');
+  sourceBadge.className = 'info-card__source-badge';
+  sourceBadge.textContent = data.source;
+
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'info-card__time';
+  timeSpan.textContent = data.time;
+
+  meta.appendChild(sourceBadge);
+  meta.appendChild(timeSpan);
 
   card.appendChild(title);
   card.appendChild(summary);
